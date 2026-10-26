@@ -6,8 +6,6 @@ import org.junit.jupiter.api.Test;
 
 public class DistanceImageBinarizerTest {
 
-    // A fake ColorDistanceFinder: toBufferedImage never needs distances,
-    // so this just returns 0 and keeps the test independent of EuclideanColorDistance.
     private static class FakeDistanceFinder implements ColorDistanceFinder {
         @Override
         public double distance(int colorA, int colorB) {
@@ -24,8 +22,7 @@ public class DistanceImageBinarizerTest {
         int[][] binary = {
             {1, 0, 1},
             {0, 1, 0}
-        }; // 2 rows (height), 3 columns (width)
-
+        }; 
         BufferedImage result = binarizer.toBufferedImage(binary);
 
         assertEquals(3, result.getWidth());
@@ -42,7 +39,7 @@ public class DistanceImageBinarizerTest {
 
         BufferedImage result = binarizer.toBufferedImage(binary);
 
-        // getRGB takes (x, y), the array is [y][x]
+       
         assertEquals(WHITE, result.getRGB(0, 0)); // binary[0][0]
         assertEquals(BLACK, result.getRGB(1, 0)); // binary[0][1]
         assertEquals(BLACK, result.getRGB(0, 1)); // binary[1][0]
