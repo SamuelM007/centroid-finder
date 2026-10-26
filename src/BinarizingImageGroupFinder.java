@@ -39,4 +39,9 @@ public class BinarizingImageGroupFinder implements ImageGroupFinder {
     public List<Group> findConnectedGroups(BufferedImage image) {
         return null;
     }
+    //test main
+    public static void main(String[] args){
+        ImageBinarizer testImg= new BufferedImage(new int[][]{{2,3},{2,3}});
+        // BinarizingImageGroupFinder test= new BinarizingImageGroupFinder(BufferedImage , 2)
+    }
 }
