@@ -45,7 +45,7 @@ public class DistanceImageBinarizer implements ImageBinarizer {
      */
     @Override
     public int[][] toBinaryArray(BufferedImage image) {
-        return null;
+        
     }
 
     /**
@@ -58,6 +58,9 @@ public class DistanceImageBinarizer implements ImageBinarizer {
      */
     @Override
     public BufferedImage toBufferedImage(int[][] image) {
+        BufferedImage img = new BufferedImage(image.length,image[0].length, BufferedImage.TYPE_INT_RGB);
+
+        
         return null;
     }
 }
