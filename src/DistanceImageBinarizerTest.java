@@ -62,4 +62,82 @@ public class DistanceImageBinarizerTest {
             }
         }
     }
+
+    // A fake that returns 0 when the colors match exactly and 1000 otherwise.
+    // This makes it easy to control which pixels should come out white.
+    private static class ExactMatchDistanceFinder implements ColorDistanceFinder {
+        @Override
+        public double distance(int colorA, int colorB) {
+            return colorA == colorB ? 0 : 1000;
+        }
+    }
+
+    // A fake that remembers the colors it was called with.
+    private static class RecordingDistanceFinder implements ColorDistanceFinder {
+        int lastColorA;
+        int lastColorB;
+
+        @Override
+        public double distance(int colorA, int colorB) {
+            lastColorA = colorA;
+            lastColorB = colorB;
+            return 0;
+        }
+    }
+
+    @Test
+    public void toBinaryArrayHasCorrectDimensionsTest() {
+        DistanceImageBinarizer binarizer = new DistanceImageBinarizer(new ExactMatchDistanceFinder(), 0xFF0000, 10);
+        BufferedImage img = new BufferedImage(3, 2, BufferedImage.TYPE_INT_RGB); // width 3, height 2
+
+        int[][] result = binarizer.toBinaryArray(img);
+
+        assertEquals(2, result.length);    // rows = height
+        assertEquals(3, result[0].length); // columns = width
+    }
+
+    @Test
+    public void toBinaryArrayTargetColorBecomesWhiteTest() {
+        DistanceImageBinarizer binarizer = new DistanceImageBinarizer(new ExactMatchDistanceFinder(), 0xFF0000, 10);
+        BufferedImage img = new BufferedImage(3, 2, BufferedImage.TYPE_INT_RGB);
+        img.setRGB(0, 0, 0xFF0000); // matches target
+        img.setRGB(2, 1, 0xFF0000); // matches target
+        img.setRGB(1, 0, 0x00FF00); // does not match
+
+        int[][] result = binarizer.toBinaryArray(img);
+
+        assertEquals(1, result[0][0]);
+        assertEquals(0, result[0][1]);
+        assertEquals(0, result[0][2]);
+        assertEquals(0, result[1][0]);
+        assertEquals(0, result[1][1]);
+        assertEquals(1, result[1][2]);
+    }
+
+    @Test
+    public void toBinaryArrayDistanceEqualToThresholdIsBlackTest() {
+        // distance of 1000 is not LESS than a threshold of 1000, so it should be black
+        DistanceImageBinarizer binarizer = new DistanceImageBinarizer(new ExactMatchDistanceFinder(), 0xFF0000, 1000);
+        BufferedImage img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+        img.setRGB(0, 0, 0x0000FF);
+
+        int[][] result = binarizer.toBinaryArray(img);
+
+        assertEquals(0, result[0][0]);
+    }
+
+    @Test
+    public void toBinaryArrayPassesColorsWithoutAlphaTest() {
+        RecordingDistanceFinder recorder = new RecordingDistanceFinder();
+        DistanceImageBinarizer binarizer = new DistanceImageBinarizer(recorder, 0x123456, 10);
+        BufferedImage img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+        img.setRGB(0, 0, 0xABCDEF);
+
+        binarizer.toBinaryArray(img);
+
+        // the pixel color and target should both arrive as 0xRRGGBB (no alpha), in either order
+        boolean pixelThenTarget = recorder.lastColorA == 0xABCDEF && recorder.lastColorB == 0x123456;
+        boolean targetThenPixel = recorder.lastColorA == 0x123456 && recorder.lastColorB == 0xABCDEF;
+        assertEquals(true, pixelThenTarget || targetThenPixel);
+    }
 }
