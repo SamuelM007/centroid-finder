@@ -1,4 +1,7 @@
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.Stack;
 
 public class DfsBinaryGroupFinder implements BinaryGroupFinder {
    /**
@@ -30,7 +33,54 @@ public class DfsBinaryGroupFinder implements BinaryGroupFinder {
     */
     @Override
     public List<Group> findConnectedGroups(int[][] image) {
+        if(image == null) throw new NullPointerException();
+
+        Set<Coordinate> visited = new HashSet<>();
+        
+        
+            
+            
+            
         return null;
+    }
+        
+    private Group groupBuilder(Coordinate start,int[][] image, Set<Coordinate> visited){
+        
+        Stack<Coordinate> stack = new Stack<>();
+        int groupSize = 0;
+        int groupAverageX = 0;
+        int groupAverageY = 0;
+
+        int[][] directions = {{0,1},{0,-1},{1,0},{-1,0}};
+        
+        while(!stack.isEmpty()){
+            Coordinate current = stack.pop();
+            if(visited.contains(current))continue;
+            visited.add(current);
+
+            groupSize++;
+            groupAverageX += current.x();
+            groupAverageY += current.y();
+
+            for(int[] direction : directions){
+                Coordinate neighbor = new Coordinate(start.x()+direction[1],start.y()+direction[0]);
+                if( neighbor.x() >= 0 && 
+                    neighbor.x() < image[0].length &&
+                    neighbor.y() >= 0 &&
+                    neighbor.y() < image.length &&
+                    image[neighbor.y()][neighbor.x()] != 0
+                ){
+                    stack.push(neighbor);
+                }
+            }
+        }
+
+        groupAverageX /= groupSize;
+        groupAverageY /= groupSize;
+
+        return new Group(groupSize,new Coordinate(groupAverageX,groupAverageY));
+
+            
     }
     
 }
