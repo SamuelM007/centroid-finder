@@ -14,7 +14,7 @@ public class BinarizingImageGroupFinderTest {
     @BeforeEach
     void setUp() {
         groupFinder = new BinarizingImageGroupFinder(
-            new DistanceImageBinarizer(new EuclideanColorDistance(), WHITE, 0),
+            new DistanceImageBinarizer(new EuclideanColorDistance(), WHITE, 1), // only exact white (distance 0) is < 1
             new DfsBinaryGroupFinder());
     }
 
