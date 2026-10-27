@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -33,20 +35,30 @@ public class DfsBinaryGroupFinder implements BinaryGroupFinder {
     */
     @Override
     public List<Group> findConnectedGroups(int[][] image) {
-        if(image == null) throw new NullPointerException();
+        imageChecker(image);
 
         Set<Coordinate> visited = new HashSet<>();
+        List<Group> list = new ArrayList<>();
         
-        
-            
-            
-            
-        return null;
+        for(int y = 0; y < image.length; y++){
+            for(int x = 0; x < image[y].length; x++){
+                if( image[y][x] == 1 && 
+                    !visited.contains(new Coordinate(x, y))
+                ){
+                    list.add(groupBuilder(new Coordinate(x, y),image,visited));
+                }
+            }
+        }
+
+        list.sort(Comparator.reverseOrder());
+        return list;
     }
         
     private Group groupBuilder(Coordinate start,int[][] image, Set<Coordinate> visited){
         
         Stack<Coordinate> stack = new Stack<>();
+        stack.push(start);
+
         int groupSize = 0;
         int groupAverageX = 0;
         int groupAverageY = 0;
@@ -63,7 +75,7 @@ public class DfsBinaryGroupFinder implements BinaryGroupFinder {
             groupAverageY += current.y();
 
             for(int[] direction : directions){
-                Coordinate neighbor = new Coordinate(start.x()+direction[1],start.y()+direction[0]);
+                Coordinate neighbor = new Coordinate(current.x()+direction[1],current.y()+direction[0]);
                 if( neighbor.x() >= 0 && 
                     neighbor.x() < image[0].length &&
                     neighbor.y() >= 0 &&
@@ -83,4 +95,20 @@ public class DfsBinaryGroupFinder implements BinaryGroupFinder {
             
     }
     
+    private void imageChecker(int[][] image){
+        if(image == null) throw new NullPointerException();
+        if(image.length == 0) throw new IllegalArgumentException();
+
+        int width = image[0].length;
+        if(width == 0) throw new IllegalArgumentException();
+
+        for(int y = 0; y < image.length; y++){
+            if(image[y] == null) throw new NullPointerException();
+            if(image[y].length != width) throw new IllegalArgumentException();
+            
+            for(int x = 0; x < image[y].length; x++){
+                if(image[y][x] != 0 && image[y][x] != 1) throw new IllegalArgumentException();
+            }
+        }
+    }
 }
