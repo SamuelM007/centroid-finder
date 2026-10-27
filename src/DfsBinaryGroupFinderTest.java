@@ -5,7 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class DfsBinaryGroupFinderTest {
-    private DfsBinaryGroupFinder finder; // TODO: replace with your implementing class
+    private DfsBinaryGroupFinder finder;
 
     @BeforeEach
     public void setUp() {
