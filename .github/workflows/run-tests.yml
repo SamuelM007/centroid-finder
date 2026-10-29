@@ -11,34 +11,27 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up JDK
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '23'
-
-      - name: Compile
-        run: |
-          mkdir -p src
-          javac -cp lib/junit-platform-console-standalone-6.0.3.jar src/*.java
+          cache: maven
 
       - name: Run and Verify Tests
         run: |
-          # Ensure that the pipeline fails if any command fails.
           set -o pipefail
-          # Run tests and tee output to both the console and a file.
-          java -jar lib/junit-platform-console-standalone-6.0.3.jar -cp src --scan-classpath | tee test-results.txt
-          # Capture the exit code of the java command.
+          mvn -B test | tee test-results.txt
           exit_code=${PIPESTATUS[0]}
           if [ $exit_code -ne 0 ]; then
             echo "❌ Unit tests failed with exit code $exit_code."
             exit $exit_code
           fi
 
-          # Extract the number of tests run from the output.
-          TEST_COUNT=$(grep -oP '\d+(?= tests found)' test-results.txt | head -n 1)
+          # Surefire prints a final summary line like "Tests run: 20, Failures: 0, ..."
+          TEST_COUNT=$(grep -oP 'Tests run: \K\d+' test-results.txt | tail -n 1)
           MIN_TESTS=15
 
           if [ "$TEST_COUNT" -lt "$MIN_TESTS" ]; then
