@@ -9,6 +9,7 @@ import java.util.List;
  */
 public class CentroidTracker {
     private final ImageGroupFinder groupFinder;
+    private List<Group> groups;
 
     /**
      * @param groupFinder the ImageGroupFinder used to find groups in each image
@@ -25,7 +26,7 @@ public class CentroidTracker {
      */
     public Coordinate findLargestCentroid(BufferedImage image) {
         // Groups are sorted descending, so the first one is the largest
-        List<Group> groups = groupFinder.findConnectedGroups(image);
+        groups = groupFinder.findConnectedGroups(image);
         if (groups.isEmpty()) {
             return new Coordinate(-1, -1);
         }
