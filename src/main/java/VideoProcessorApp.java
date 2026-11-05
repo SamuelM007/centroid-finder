@@ -3,11 +3,6 @@ import java.io.File;
 import java.io.PrintWriter;
 import javax.imageio.ImageIO;
 
-import org.bytedeco.ffmpeg.global.avutil;
-import org.bytedeco.javacv.FFmpegFrameGrabber;
-import org.bytedeco.javacv.Frame;
-import org.bytedeco.javacv.Java2DFrameConverter;
-
 /**
  * The Video Processor Application.
  *
@@ -52,21 +47,13 @@ public class VideoProcessorApp {
         ImageGroupFinder groupFinder = new BinarizingImageGroupFinder(binarizer, new DfsBinaryGroupFinder());
         CentroidTracker tracker = new CentroidTracker(groupFinder);
 
-        // Only show FFmpeg errors (hides the per-frame swscaler warnings)
-        avutil.av_log_set_level(avutil.AV_LOG_ERROR);
-
-        try (FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(inputPath);
-             Java2DFrameConverter converter = new Java2DFrameConverter();
+        try (VideoFrameReader reader = new VideoFrameReader(inputPath);
              PrintWriter writer = new PrintWriter(outputCsv)) {
-            grabber.start();
-
             int frameCount = 0;
-            Frame frame;
-            // grabImage() only returns video frames (skips audio), null at end of video
-            while ((frame = grabber.grabImage()) != null) {
-                // JavaCV Frame -> BufferedImage so the old code can use it
-                BufferedImage image = converter.convert(frame);
-                double seconds = frame.timestamp / 1_000_000.0; // microseconds -> seconds
+            TimestampedFrame frame;
+            while ((frame = reader.nextFrame()) != null) {
+                BufferedImage image = frame.image();
+                double seconds = frame.seconds();
 
                 if (frameCount == 0) {
                     int[][] binaryArray = binarizer.toBinaryArray(image);
@@ -81,8 +68,6 @@ public class VideoProcessorApp {
 
                 frameCount++;
             }
-
-            grabber.stop();
         } catch (Exception e) {
             System.err.println("Error processing video: " + inputPath);
             e.printStackTrace();
