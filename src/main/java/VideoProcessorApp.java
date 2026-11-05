@@ -35,16 +35,16 @@ public class VideoProcessorApp {
 
         VideoProcessorArguments arguments = null;
         try {
-            arguments = VideoProcessorArguments.parse(args);
+            arguments = new VideoProcessorArguments(args);
         } catch (IllegalArgumentException e) {
             System.err.println(e.getMessage());
             return;
         }
 
-        String inputPath = arguments.inputPath();
-        String outputCsv = arguments.outputCsv();
-        int targetColor = arguments.targetColor();
-        int threshold = arguments.threshold();
+        String inputPath = arguments.getInputPath();
+        String outputCsv = arguments.getOutputCsv();
+        int targetColor = arguments.getTargetColor();
+        int threshold = arguments.getThreshold();
 
         ColorDistanceFinder distanceFinder = new EuclideanColorDistance();
         ImageBinarizer binarizer = new DistanceImageBinarizer(distanceFinder, targetColor, threshold);
