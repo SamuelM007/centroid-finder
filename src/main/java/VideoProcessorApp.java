@@ -47,6 +47,9 @@ public class VideoProcessorApp {
         ImageGroupFinder groupFinder = new BinarizingImageGroupFinder(binarizer, new DfsBinaryGroupFinder());
         CentroidTracker tracker = new CentroidTracker(groupFinder);
 
+        // Centroids that jump more than 50 pixels from the last good one are written as -1,-1
+        AnomalyDetector anomalyDetector = new AnomalyDetector(50);
+
         try (VideoFrameReader reader = new VideoFrameReader(inputPath);
              PrintWriter writer = new PrintWriter(outputCsv)) {
             int frameCount = 0;
@@ -63,6 +66,9 @@ public class VideoProcessorApp {
                 }
 
                 Coordinate centroid = tracker.findLargestCentroid(image);
+                if (anomalyDetector.isAnomaly(centroid)) {
+                    centroid = new Coordinate(-1, -1);
+                }
 
                 writer.println(seconds + "," + centroid.x() + "," + centroid.y());
 
