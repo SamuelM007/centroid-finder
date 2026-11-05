@@ -75,6 +75,41 @@ public class VideoProcessorAppTest {
     }
 
     /**
+     * Writes a small 64x48 test mp4 at 10 fps where an 8x8 black square
+     * is drawn at a different spot in each frame.
+     * squarePositions[i] is the {x, y} of the square's top-left corner in frame i.
+     */
+    private String makeMovingSquareVideo(int[][] squarePositions) throws Exception {
+        String path = tempDir.resolve("test.mp4").toString();
+        int width = 64;
+        int height = 48;
+
+        try (FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(path, width, height);
+             Java2DFrameConverter converter = new Java2DFrameConverter()) {
+            recorder.setFormat("mp4");
+            recorder.setVideoCodec(avcodec.AV_CODEC_ID_MPEG4);
+            recorder.setFrameRate(10);
+            recorder.setVideoQuality(1);
+            recorder.start();
+
+            for (int[] position : squarePositions) {
+                BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
+                Graphics2D g = image.createGraphics();
+                g.setColor(Color.WHITE);
+                g.fillRect(0, 0, width, height);
+                g.setColor(Color.BLACK);
+                g.fillRect(position[0], position[1], 8, 8);
+                g.dispose();
+                recorder.record(converter.convert(image));
+            }
+
+            recorder.stop();
+        }
+
+        return path;
+    }
+
+    /**
      * Runs the app on the video with the given color and threshold,
      * writing to a CSV in the temp folder.
      */
@@ -155,5 +190,57 @@ public class VideoProcessorAppTest {
 
         String output = capturedOut.toString();
         assertTrue(output.contains("Usage"), output);
+    }
+
+    @Test
+    public void bigJumpWritesNegativeOneTest() throws Exception {
+        // Frames 0-4: square at top-left, centroid about (5, 5)
+        // Frames 5-9: square jumps to bottom-right, centroid about (57, 41) -> ~64 px jump, anomaly
+        // Frames 10-14: square back at top-left -> near the last good centroid, accepted again
+        int[][] positions = new int[15][];
+        for (int i = 0; i < 15; i++) {
+            if (i >= 5 && i < 10) {
+                positions[i] = new int[] { 54, 38 };
+            } else {
+                positions[i] = new int[] { 2, 2 };
+            }
+        }
+        String video = makeMovingSquareVideo(positions);
+
+        runApp(video, "000000", "100");
+
+        List<String[]> rows = getRows();
+        assertEquals(15, rows.size());
+        for (int i = 0; i < 15; i++) {
+            int x = Integer.parseInt(rows.get(i)[1]);
+            int y = Integer.parseInt(rows.get(i)[2]);
+            if (i >= 5 && i < 10) {
+                assertEquals(-1, x, "frame " + i + " should be an anomaly");
+                assertEquals(-1, y, "frame " + i + " should be an anomaly");
+            } else {
+                assertEquals(5, x, 1, "frame " + i);
+                assertEquals(5, y, 1, "frame " + i);
+            }
+        }
+    }
+
+    @Test
+    public void smallMovesAreKeptTest() throws Exception {
+        // Square moves 2 px right each frame -> normal movement, never an anomaly
+        int[][] positions = new int[10][];
+        for (int i = 0; i < 10; i++) {
+            positions[i] = new int[] { 10 + i * 2, 20 };
+        }
+        String video = makeMovingSquareVideo(positions);
+
+        runApp(video, "000000", "100");
+
+        List<String[]> rows = getRows();
+        assertEquals(10, rows.size());
+        for (int i = 0; i < 10; i++) {
+            // square at x = 10 + 2i .. 17 + 2i -> centroid x = 13 + 2i, y = 23
+            assertEquals(13 + i * 2, Integer.parseInt(rows.get(i)[1]), 1, "frame " + i);
+            assertEquals(23, Integer.parseInt(rows.get(i)[2]), 1, "frame " + i);
+        }
     }
 }
