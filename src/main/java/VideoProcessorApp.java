@@ -1,7 +1,6 @@
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.PrintWriter;
-import java.util.List;
 import javax.imageio.ImageIO;
 
 import org.bytedeco.ffmpeg.global.avutil;
@@ -51,6 +50,7 @@ public class VideoProcessorApp {
 
         // Reuse the existing group finder to track the largest centroid
         ImageGroupFinder groupFinder = new BinarizingImageGroupFinder(binarizer, new DfsBinaryGroupFinder());
+        CentroidTracker tracker = new CentroidTracker(groupFinder);
 
         // Only show FFmpeg errors (hides the per-frame swscaler warnings)
         avutil.av_log_set_level(avutil.AV_LOG_ERROR);
@@ -75,16 +75,9 @@ public class VideoProcessorApp {
                     ImageIO.write(binaryImage, "png", new File("firstFrameBinarized.png"));
                 }
 
-                // Groups are sorted descending, so the first one is the largest
-                List<Group> groups = groupFinder.findConnectedGroups(image);
-                int x = -1;
-                int y = -1;
-                if (!groups.isEmpty()) {
-                    x = groups.get(0).centroid().x();
-                    y = groups.get(0).centroid().y();
-                }
+                Coordinate centroid = tracker.findLargestCentroid(image);
 
-                writer.println(seconds + "," + x + "," + y);
+                writer.println(seconds + "," + centroid.x() + "," + centroid.y());
 
                 frameCount++;
             }
