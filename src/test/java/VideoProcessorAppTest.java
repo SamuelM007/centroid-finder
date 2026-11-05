@@ -1,3 +1,4 @@
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Color;
@@ -6,6 +7,8 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.bytedeco.ffmpeg.global.avcodec;
 import org.bytedeco.javacv.FFmpegFrameRecorder;
@@ -34,24 +37,32 @@ public class VideoProcessorAppTest {
     }
 
     /**
-     * Writes a small test mp4 with the given number of frames.
-     * Each frame is a solid color so the video is valid but tiny.
+     * Writes a small 64x48 test mp4 at 10 fps with the given number of frames.
+     * Each frame is white with a black square of the given size at (squareX, squareY).
+     * A squareSize of 0 means no square (all white).
      */
-    private String makeTestVideo(int frames, int width, int height, double frameRate) throws Exception {
+    private String makeTestVideo(int frames, int squareX, int squareY, int squareSize) throws Exception {
         String path = tempDir.resolve("test.mp4").toString();
+        int width = 64;
+        int height = 48;
 
         try (FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(path, width, height);
              Java2DFrameConverter converter = new Java2DFrameConverter()) {
             recorder.setFormat("mp4");
             recorder.setVideoCodec(avcodec.AV_CODEC_ID_MPEG4);
-            recorder.setFrameRate(frameRate);
+            recorder.setFrameRate(10);
+            recorder.setVideoQuality(1); // best quality so the square edges stay sharp
             recorder.start();
 
             for (int i = 0; i < frames; i++) {
                 BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
                 Graphics2D g = image.createGraphics();
-                g.setColor(new Color(i * 5 % 256, 100, 200));
+                g.setColor(Color.WHITE);
                 g.fillRect(0, 0, width, height);
+                if (squareSize > 0) {
+                    g.setColor(Color.BLACK);
+                    g.fillRect(squareX, squareY, squareSize, squareSize);
+                }
                 g.dispose();
                 recorder.record(converter.convert(image));
             }
@@ -62,36 +73,70 @@ public class VideoProcessorAppTest {
         return path;
     }
 
-    @Test
-    public void countsAllFramesTest() throws Exception {
-        String video = makeTestVideo(30, 64, 48, 10);
-
-        VideoProcessorApp.main(new String[] { video });
-
-        String output = capturedOut.toString();
-        assertTrue(output.contains("Counted frames: 30"), output);
+    /**
+     * Returns the "seconds,x,y" rows from the captured output, split into parts.
+     */
+    private List<String[]> getRows() {
+        List<String[]> rows = new ArrayList<>();
+        for (String line : capturedOut.toString().split("\\R")) {
+            String[] parts = line.trim().split(",");
+            if (parts.length == 3) {
+                rows.add(parts);
+            }
+        }
+        return rows;
     }
 
     @Test
-    public void reportsDimensionsTest() throws Exception {
-        String video = makeTestVideo(5, 64, 48, 10);
+    public void tracksSquareCentroidTest() throws Exception {
+        // 10x10 square at (20, 10) -> pixels x 20..29, y 10..19 -> centroid (24, 14)
+        String video = makeTestVideo(5, 20, 10, 10);
 
-        VideoProcessorApp.main(new String[] { video });
+        VideoProcessorApp.main(new String[] { video, "000000", "100" });
 
-        String output = capturedOut.toString();
-        assertTrue(output.contains("Width: 64"), output);
-        assertTrue(output.contains("Height: 48"), output);
+        List<String[]> rows = getRows();
+        assertEquals(5, rows.size(), capturedOut.toString());
+        for (String[] row : rows) {
+            assertEquals(24, Integer.parseInt(row[1]), 1, capturedOut.toString());
+            assertEquals(14, Integer.parseInt(row[2]), 1, capturedOut.toString());
+        }
     }
 
     @Test
-    public void lastTimestampMatchesFrameRateTest() throws Exception {
-        // 20 frames at 10 fps -> last frame starts at 1.9 seconds
-        String video = makeTestVideo(20, 64, 48, 10);
+    public void noGroupPrintsNegativeOneTest() throws Exception {
+        // All white video, looking for black -> no groups
+        String video = makeTestVideo(3, 0, 0, 0);
 
-        VideoProcessorApp.main(new String[] { video });
+        VideoProcessorApp.main(new String[] { video, "000000", "100" });
 
-        String output = capturedOut.toString();
-        assertTrue(output.contains("Last frame timestamp (s): 1.9"), output);
+        List<String[]> rows = getRows();
+        assertEquals(3, rows.size(), capturedOut.toString());
+        for (String[] row : rows) {
+            assertEquals("-1", row[1]);
+            assertEquals("-1", row[2]);
+        }
+    }
+
+    @Test
+    public void onlyTracksFirstTenFramesTest() throws Exception {
+        String video = makeTestVideo(15, 20, 10, 10);
+
+        VideoProcessorApp.main(new String[] { video, "000000", "100" });
+
+        assertEquals(10, getRows().size(), capturedOut.toString());
+    }
+
+    @Test
+    public void timestampsMatchFrameRateTest() throws Exception {
+        // 10 fps -> rows at 0.0, 0.1, 0.2, ...
+        String video = makeTestVideo(5, 20, 10, 10);
+
+        VideoProcessorApp.main(new String[] { video, "000000", "100" });
+
+        List<String[]> rows = getRows();
+        for (int i = 0; i < rows.size(); i++) {
+            assertEquals(i * 0.1, Double.parseDouble(rows.get(i)[0]), 0.001, capturedOut.toString());
+        }
     }
 
     @Test
