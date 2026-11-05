@@ -24,7 +24,36 @@ of `seconds,x,y` for the largest centroid in each frame (`-1,-1` if none found).
 - CentroidTracker.java - Tracks Centroids in the frames and returns the largest one.
 
 ## Architecture
-
+src
+└── main/java
+    │
+    │   # Entry points
+    ├── ImageSummaryApp.java
+    ├── VideoProcessorApp.java
+    ├── VideoProcessorArguments.java
+    │
+    │   # Pipeline (image in, groups out)
+    ├── ImageGroupFinder.java              (interface)
+    ├── BinarizingImageGroupFinder.java
+    │
+    │   # Binarization
+    ├── ImageBinarizer.java                (interface)
+    ├── DistanceImageBinarizer.java
+    │
+    │   # Color distance
+    ├── ColorDistanceFinder.java           (interface)
+    ├── EuclideanColorDistance.java
+    │
+    │   # Grouping
+    ├── BinaryGroupFinder.java             (interface)
+    ├── DfsBinaryGroupFinder.java
+    │
+    │   # Tracking
+    ├── CentroidTracker.java
+    │
+    │   # Models
+    ├── Group.java
+    └── Coordinate.java
 
 ## Testing plan
 - Arguments: valid input, wrong arg count, bad hex, non-integer threshold
@@ -41,4 +70,7 @@ of `seconds,x,y` for the largest centroid in each frame (`-1,-1` if none found).
 - JAR and mp4 are in .gitignore
 
 ## Validation
-- 
+- Ran unit test to make sure every component was working.
+- Ran application with salamander video, printed out output.
+- We compared output to what was expected fixed throw at anomalies.
+- If anomaly detected, it is assigned coordinates -1,-1.
