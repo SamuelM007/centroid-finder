@@ -33,24 +33,18 @@ public class VideoProcessorApp {
             return;
         }
 
-        String inputPath = args[0];
-        String outputCsv = args[1];
-
-        int targetColor = 0;
+        VideoProcessorArguments arguments = null;
         try {
-            targetColor = Integer.parseInt(args[2], 16);
-        } catch (NumberFormatException e) {
-            System.err.println("Invalid hex target color. Please provide a color in RRGGBB format.");
+            arguments = VideoProcessorArguments.parse(args);
+        } catch (IllegalArgumentException e) {
+            System.err.println(e.getMessage());
             return;
         }
 
-        int threshold = 0;
-        try {
-            threshold = Integer.parseInt(args[3]);
-        } catch (NumberFormatException e) {
-            System.err.println("Threshold must be an integer.");
-            return;
-        }
+        String inputPath = arguments.inputPath();
+        String outputCsv = arguments.outputCsv();
+        int targetColor = arguments.targetColor();
+        int threshold = arguments.threshold();
 
         ColorDistanceFinder distanceFinder = new EuclideanColorDistance();
         ImageBinarizer binarizer = new DistanceImageBinarizer(distanceFinder, targetColor, threshold);
