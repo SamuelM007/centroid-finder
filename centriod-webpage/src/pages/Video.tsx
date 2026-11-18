@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
+import Preview from "../components/Preview";
 
 const Video =()=>{
     const [videos, setVideos]=useState<string[]>([]);
     useEffect(()=>{
         const fetchVideos=async(): Promise<void>=>{
             try{
-                console.log("in effect")
                 const res:Response = await fetch('/api/videos');
                 const data: string[] = await res.json();
                 setVideos(data);
-                console.log(videos)
             }
             catch(error: unknown){
                 console.log(error);
@@ -21,7 +20,10 @@ const Video =()=>{
 
     return(
         <>
-            {videos}
+        Availabe Videos:
+            {videos.map((fileName)=>{
+                return (<Preview filename={fileName} />)
+            })}
         </>
     )
 }
