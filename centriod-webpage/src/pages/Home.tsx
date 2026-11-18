@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Thumbnail from "../components/Thumbnail";
+import VideoCard from "../components/VideoCard";
 
 const Home=()=>{
     const [videos, setVideos]=useState<string[]>([]);
@@ -19,14 +20,14 @@ const Home=()=>{
     console.log(videos);
 
     return(
-        <>
+        <div className="home">
         Avialable Videos
         {videos.map(name=>{
             return(
-                <Thumbnail fileName={name}/>
+                <VideoCard fileName={name} />
             )
         })}
-        </>
+        </div>
     )
 }
 
