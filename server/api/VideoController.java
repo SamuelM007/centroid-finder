@@ -1,5 +1,7 @@
 package api;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -7,6 +9,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+
+import javax.imageio.ImageIO;
+
+import org.bytedeco.javacv.FFmpegFrameGrabber;
+import org.bytedeco.javacv.Java2DFrameConverter;
 
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -102,13 +109,12 @@ public ResponseEntity<?> getThumbnail(@PathVariable String fileName){
     if (!file.exists()) {
         return ResponseEntity.notFound().build();
     }
-    try {
-        Process ffmpeg = new ProcessBuilder("ffmpeg", "-i", file.getPath(),
-                "-frames:v", "1", "-f", "image2pipe", "-vcodec", "mjpeg", "-")
-                .redirectError(ProcessBuilder.Redirect.DISCARD)
-                .start();
-        byte[] jpeg = ffmpeg.getInputStream().readAllBytes();
-        return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG).body(jpeg);
+    try (FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(file)) {
+        grabber.start();
+        BufferedImage image = new Java2DFrameConverter().convert(grabber.grabImage());
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ImageIO.write(image, "jpg", out);
+        return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG).body(out.toByteArray());
     } catch (IOException e) {
         return ResponseEntity.internalServerError()
                 .body(Map.of("error", "Error generating thumbnail"));
