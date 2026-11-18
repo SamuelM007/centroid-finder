@@ -1,30 +1,15 @@
-import { useEffect, useState } from "react";
+
 import Preview from "../components/Preview";
+import { useParams } from "react-router-dom";
 
 const Video =()=>{
-    const [videos, setVideos]=useState<string[]>([]);
-    useEffect(()=>{
-        const fetchVideos=async(): Promise<void>=>{
-            try{
-                const res:Response = await fetch('/api/videos');
-                const data: string[] = await res.json();
-                setVideos(data);
-            }
-            catch(error: unknown){
-                console.log(error);
-            }
-        }
-        fetchVideos();
-    },[])
-    console.log(videos);
+    const {fileName} = useParams<{fileName: string}>()
+   
 
     return(
-        <>
-        Availabe Videos:
-            {videos.map((fileName)=>{
-                return (<Preview filename={fileName} />)
-            })}
-        </>
+        <div className="video">
+            <Preview fileName={fileName!} />
+        </div>
     )
 }
 
