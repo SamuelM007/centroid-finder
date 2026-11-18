@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Thumbnail from "../components/Thumbnail";
 
 const Home=()=>{
     const [videos, setVideos]=useState<string[]>([]);
@@ -22,7 +23,7 @@ const Home=()=>{
         Avialable Videos
         {videos.map(name=>{
             return(
-                <p>{name}</p>
+                <Thumbnail fileName={name}/>
             )
         })}
         </>
