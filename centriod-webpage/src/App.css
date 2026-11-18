@@ -1,0 +1,47 @@
+.home {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+  padding: 32px;
+}
+
+.home > h2 {
+  grid-column: 1 / -1;
+  text-align: left;
+  margin: 0;
+}
+
+.videoCard {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--code-bg);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.videoCard:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent-border);
+}
+
+.videoCard img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+  order: -1;
+}
+
+.videoCard .title {
+  padding: 12px 16px;
+  text-align: left;
+  color: var(--text-h);
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

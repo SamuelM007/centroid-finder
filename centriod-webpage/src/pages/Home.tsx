@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import Thumbnail from "../components/Thumbnail";
 import VideoCard from "../components/VideoCard";
 
 const Home=()=>{
@@ -21,7 +20,7 @@ const Home=()=>{
 
     return(
         <div className="home">
-        Avialable Videos
+        <h2>Avialable Videos</h2>
         {videos.map(name=>{
             return(
                 <VideoCard fileName={name} />
