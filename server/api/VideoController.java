@@ -4,7 +4,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class VideoController {
+private final Map<String, String> jobs = new ConcurrentHashMap<>();
 
 @GetMapping("/api/video/{fileName}")
  public ResponseEntity<Resource> getVideo(@PathVariable String fileName){
