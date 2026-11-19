@@ -20,7 +20,7 @@ const Home=()=>{
 
     return(
         <div className="home">
-        <h2>Avialable Videos</h2>
+        <h2>Available Videos</h2>
         {videos.map(name=>{
             return(
                 <VideoCard fileName={name} />
