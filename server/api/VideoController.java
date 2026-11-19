@@ -27,7 +27,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class VideoController {
-private final Map<String, String> jobs = new ConcurrentHashMap<>();
+
+private final JobRepository jobs;
+
+public VideoController(JobRepository jobs) {
+    this.jobs = jobs;
+}
 
 @GetMapping("/api/video/{fileName}")
  public ResponseEntity<Resource> getVideo(@PathVariable String fileName){
@@ -63,13 +68,13 @@ public ResponseEntity<Map<String, String>> startProcess(@PathVariable String fil
     builder.redirectError(ProcessBuilder.Redirect.DISCARD);
     try {
         Process process = builder.start();
-        jobs.put(jobId, "processing");
+        jobs.create(jobId, fileName, targetColor, threshold);
         process.onExit().thenAccept(p ->
-            jobs.put(jobId, p.exitValue() == 0 ? "done" : "error"));
+            jobs.updateStatus(jobId, p.exitValue() == 0 ? "done" : "error"));
     } catch (IOException e) {
         return ResponseEntity.internalServerError().body(Map.of("error", "Error starting job"));
     }
-    //Esxpress version: res.status(202).send(jobId)
+    //Express version: res.status(202).send(jobId)
     return ResponseEntity.accepted().body(Map.of("jobId", jobId));
 
 }
@@ -91,7 +96,7 @@ public ResponseEntity<?> getAllVideos(){
 //checks if job is done. just return status for now
 @GetMapping("/api/jobcheck/{jobId}")
 public ResponseEntity<Map<String, String>> jobCheck(@PathVariable String jobId){
-    String status= jobs.get(jobId);
+    String status = jobs.findStatus(jobId);
     if (status == null) {
         return ResponseEntity.status(404).body(Map.of("error", "Job ID not found"));
     }

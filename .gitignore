@@ -28,3 +28,6 @@ target/
 
 # Videos (do not commit)
 *.mp4
+
+# SQLite database
+*.db
