@@ -31,3 +31,6 @@ target/
 
 # SQLite database
 *.db
+
+server/firstFrameBinarized.png
+server/metadata/*.csv
