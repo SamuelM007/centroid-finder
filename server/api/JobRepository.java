@@ -1,6 +1,7 @@
 package api;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -36,5 +37,19 @@ public class JobRepository {
     public String findStatus(String id) {
         List<String> rows = db.queryForList("SELECT status FROM jobs WHERE id = ?", String.class, id);
         return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    private static final String JOB_COLUMNS =
+        "id, file_name AS fileName, target_color AS targetColor, threshold, status, created_at AS createdAt";
+
+    // Returns the job as a map (turned into JSON by Spring), or null if no job has this id
+    public Map<String, Object> findById(String id) {
+        List<Map<String, Object>> rows = db.queryForList("SELECT " + JOB_COLUMNS + " FROM jobs WHERE id = ?", id);
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    // All jobs, newest first
+    public List<Map<String, Object>> findAll() {
+        return db.queryForList("SELECT " + JOB_COLUMNS + " FROM jobs ORDER BY created_at DESC, rowid DESC");
     }
 }
