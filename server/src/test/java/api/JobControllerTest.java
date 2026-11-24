@@ -23,6 +23,12 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+/**
+ * Tests every route in {@link JobController}, including the error cases.
+ *
+ * Runs against a separate test database. Most tests add jobs straight to the database
+ * with {@link #createJob(JobStatus)} so each status can be tested without running the processor.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestPropertySource(properties = "spring.datasource.url=jdbc:sqlite:target/test-jobs.db")
@@ -38,6 +44,11 @@ public class JobControllerTest {
     @Autowired
     private JobRepository jobs;
 
+    /**
+     * Creates the test video file and makes sure the {@code metadata/} folder exists.
+     *
+     * @throws Exception if the test files can't be written
+     */
     @BeforeAll
     static void makeTestFiles() throws Exception {
         Files.createDirectories(TEST_VIDEO_PATH.getParent());
@@ -45,12 +56,22 @@ public class JobControllerTest {
         Files.createDirectories(Path.of("metadata"));
     }
 
+    /**
+     * Deletes the test video file.
+     *
+     * @throws Exception if the test file can't be deleted
+     */
     @AfterAll
     static void deleteTestFiles() throws Exception {
         Files.deleteIfExists(TEST_VIDEO_PATH);
     }
 
-    // adds a job straight to the db with the given status and returns its id
+    /**
+     * Adds a job straight to the database with the given status.
+     *
+     * @param status the status to give the job
+     * @return the new job's ID
+     */
     private String createJob(JobStatus status) {
         String id = UUID.randomUUID().toString();
         jobs.create(id, TEST_VIDEO, "FF0000", 100);
@@ -60,6 +81,9 @@ public class JobControllerTest {
 
     // POST /api/process/{fileName}
 
+    /**
+     * Starting a job returns 202 with a job ID, and the job is saved in the database.
+     */
     @Test
     void startProcessReturnsJobId() throws Exception {
         MvcResult result = mvc.perform(post("/api/process/" + TEST_VIDEO)
@@ -73,6 +97,9 @@ public class JobControllerTest {
         assertNotNull(jobs.findStatus(jobId));
     }
 
+    /**
+     * Starting a job with no params returns 400.
+     */
     @Test
     void startProcessMissingParamsReturns400() throws Exception {
         mvc.perform(post("/api/process/" + TEST_VIDEO))
@@ -80,6 +107,9 @@ public class JobControllerTest {
             .andExpect(jsonPath("$.error").exists());
     }
 
+    /**
+     * Starting a job without a threshold returns 400.
+     */
     @Test
     void startProcessMissingThresholdReturns400() throws Exception {
         mvc.perform(post("/api/process/" + TEST_VIDEO)
@@ -87,6 +117,9 @@ public class JobControllerTest {
             .andExpect(status().isBadRequest());
     }
 
+    /**
+     * Starting a job without a target color returns 400.
+     */
     @Test
     void startProcessMissingTargetColorReturns400() throws Exception {
         mvc.perform(post("/api/process/" + TEST_VIDEO)
@@ -94,6 +127,9 @@ public class JobControllerTest {
             .andExpect(status().isBadRequest());
     }
 
+    /**
+     * Starting a job with a threshold that isn't a number returns 400.
+     */
     @Test
     void startProcessNonNumberThresholdReturns400() throws Exception {
         mvc.perform(post("/api/process/" + TEST_VIDEO)
@@ -102,12 +138,18 @@ public class JobControllerTest {
             .andExpect(status().isBadRequest());
     }
 
+    /**
+     * Sending GET to the process route returns 405, since it only accepts POST.
+     */
     @Test
     void startProcessWithGetReturns405() throws Exception {
         mvc.perform(get("/api/process/" + TEST_VIDEO))
             .andExpect(status().isMethodNotAllowed());
     }
 
+    /**
+     * Starting a job for a video that doesn't exist returns 404.
+     */
     @Test
     void startProcessUnknownVideoReturns404() throws Exception {
         mvc.perform(post("/api/process/does-not-exist.mp4")
@@ -189,6 +231,9 @@ public class JobControllerTest {
 
     // GET /api/process/{jobId}/status
 
+    /**
+     * A processing job's status is {@code processing}.
+     */
     @Test
     void jobStatusProcessing() throws Exception {
         String id = createJob(JobStatus.PROCESSING);
@@ -197,6 +242,9 @@ public class JobControllerTest {
             .andExpect(jsonPath("$.status").value("processing"));
     }
 
+    /**
+     * A done job's status includes a link to its result.
+     */
     @Test
     void jobStatusDoneIncludesResultLink() throws Exception {
         String id = createJob(JobStatus.DONE);
@@ -206,6 +254,9 @@ public class JobControllerTest {
             .andExpect(jsonPath("$.result").value("/api/result/" + id));
     }
 
+    /**
+     * An error job's status includes an error message.
+     */
     @Test
     void jobStatusErrorIncludesMessage() throws Exception {
         String id = createJob(JobStatus.ERROR);
@@ -215,6 +266,9 @@ public class JobControllerTest {
             .andExpect(jsonPath("$.error").exists());
     }
 
+    /**
+     * The status of a job ID that doesn't exist returns 404.
+     */
     @Test
     void jobStatusUnknownIdReturns404() throws Exception {
         mvc.perform(get("/api/process/" + UUID.randomUUID() + "/status"))
@@ -230,6 +284,9 @@ public class JobControllerTest {
 
     // GET /api/jobs
 
+    /**
+     * The job list includes a newly created job.
+     */
     @Test
     void getAllJobsIncludesCreatedJob() throws Exception {
         String id = createJob(JobStatus.PROCESSING);
@@ -240,6 +297,9 @@ public class JobControllerTest {
 
     // GET /api/jobs/{jobId}
 
+    /**
+     * Looking up a job returns its ID, file name and status.
+     */
     @Test
     void getJobReturnsJob() throws Exception {
         String id = createJob(JobStatus.DONE);
@@ -250,6 +310,9 @@ public class JobControllerTest {
             .andExpect(jsonPath("$.status").value("done"));
     }
 
+    /**
+     * Looking up a job ID that doesn't exist returns 404.
+     */
     @Test
     void getJobUnknownIdReturns404() throws Exception {
         mvc.perform(get("/api/jobs/" + UUID.randomUUID()))
@@ -264,6 +327,9 @@ public class JobControllerTest {
 
     // GET /api/result/{jobId}
 
+    /**
+     * A done job's result is returned as CSV with the file's contents.
+     */
     @Test
     void getResultReturnsCsv() throws Exception {
         String id = createJob(JobStatus.DONE);
@@ -279,6 +345,9 @@ public class JobControllerTest {
         }
     }
 
+    /**
+     * The result of a job that is still processing returns 404.
+     */
     @Test
     void getResultStillProcessingReturns409() throws Exception {
         String id = createJob(JobStatus.PROCESSING);
@@ -287,6 +356,9 @@ public class JobControllerTest {
             .andExpect(jsonPath("$.error").value(containsString("not ready")));
     }
 
+    /**
+     * The result of a job that failed returns 404.
+     */
     @Test
     void getResultErrorJobReturns404() throws Exception {
         String id = createJob(JobStatus.ERROR);
@@ -294,6 +366,9 @@ public class JobControllerTest {
             .andExpect(status().isNotFound());
     }
 
+    /**
+     * The result of a done job whose CSV file is missing returns 404 with an error message.
+     */
     @Test
     void getResultDoneButCsvMissingReturns404() throws Exception {
         String id = createJob(JobStatus.DONE);
@@ -302,6 +377,9 @@ public class JobControllerTest {
             .andExpect(jsonPath("$.error").value("Result not available for this job"));
     }
 
+    /**
+     * The result of a job ID that doesn't exist returns 404.
+     */
     @Test
     void getResultUnknownIdReturns404() throws Exception {
         mvc.perform(get("/api/result/" + UUID.randomUUID()))
