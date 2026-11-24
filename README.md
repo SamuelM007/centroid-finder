@@ -169,7 +169,6 @@ mvn test
 | `GET /api/video/{filename}` | The video file (supports seeking) |
 | `POST /api/process/{filename}?targetColor=RRGGBB&threshold=N` | `202 {"jobId": "..."}` |
 | `GET /api/process/{jobId}/status` | `{"status": "processing" \| "done" \| "error", "result": "/api/result/{jobId}"}` |
-| `GET /api/jobcheck/{jobId}` | Same as the status route above |
 | `GET /api/result/{jobId}` | The CSV, `seconds,x,y` per frame |
 | `GET /api/jobs` | Every job, newest first: `id, fileName, targetColor, threshold, status, createdAt` |
 | `GET /api/jobs/{jobId}` | One job |
