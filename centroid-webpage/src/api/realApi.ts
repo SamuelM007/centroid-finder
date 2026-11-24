@@ -18,7 +18,8 @@ export const realApi: Api = {
 
   async getJob(jobId) {
     const res = await fetch(`/api/jobs/${enc(jobId)}`);
-    if (res.status === 404) return null;
+    // 404 = no such job, 400 = not even a valid job ID; both mean "not found" to the page
+    if (res.status === 404 || res.status === 400) return null;
     if (!res.ok) throw new Error(`Job lookup returned ${res.status}`);
     return (await res.json()) as Job;
   },

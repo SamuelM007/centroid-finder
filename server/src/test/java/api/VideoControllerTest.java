@@ -1,6 +1,7 @@
 package api;
 
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -9,8 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.nio.ShortBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 import org.bytedeco.ffmpeg.global.avcodec;
 import org.bytedeco.javacv.FFmpegFrameRecorder;
@@ -36,6 +39,18 @@ public class VideoControllerTest {
     // a file with a video name that isn't actually a video
     private static final String FAKE_VIDEO = "junit-fake-video.mp4";
     private static final Path FAKE_VIDEO_PATH = Path.of("videos", FAKE_VIDEO);
+
+    // the real test video again, under a .mov name, to check the content type
+    private static final String MOV_VIDEO = "junit-test-video.mov";
+    private static final Path MOV_VIDEO_PATH = Path.of("videos", MOV_VIDEO);
+
+    // a media file with no video frames in it
+    private static final String EMPTY_VIDEO = "junit-empty-video.mp4";
+    private static final Path EMPTY_VIDEO_PATH = Path.of("videos", EMPTY_VIDEO);
+
+    // things in videos/ that aren't videos and shouldn't be listed
+    private static final Path NOT_A_VIDEO_PATH = Path.of("videos", "junit-notes.txt");
+    private static final Path FOLDER_PATH = Path.of("videos", "junit-folder.mp4");
 
     @Autowired
     private MockMvc mvc;
@@ -63,12 +78,29 @@ public class VideoControllerTest {
             recorder.stop();
         }
         Files.writeString(FAKE_VIDEO_PATH, "not a real video");
+        Files.copy(TEST_VIDEO_PATH, MOV_VIDEO_PATH, StandardCopyOption.REPLACE_EXISTING);
+        Files.writeString(NOT_A_VIDEO_PATH, "not a video");
+        Files.createDirectories(FOLDER_PATH);
+
+        // an audio-only .mp4: it opens fine as a media file but has no video frames
+        try (FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(EMPTY_VIDEO_PATH.toString(), 1)) {
+            recorder.setFormat("mp4");
+            recorder.setAudioCodec(avcodec.AV_CODEC_ID_AAC);
+            recorder.setSampleRate(44100);
+            recorder.start();
+            recorder.recordSamples(ShortBuffer.wrap(new short[44100])); // one second of silence
+            recorder.stop();
+        }
     }
 
     @AfterAll
     static void deleteTestVideo() throws Exception {
         Files.deleteIfExists(TEST_VIDEO_PATH);
         Files.deleteIfExists(FAKE_VIDEO_PATH);
+        Files.deleteIfExists(MOV_VIDEO_PATH);
+        Files.deleteIfExists(EMPTY_VIDEO_PATH);
+        Files.deleteIfExists(NOT_A_VIDEO_PATH);
+        Files.deleteIfExists(FOLDER_PATH);
     }
 
     // GET /api/health
@@ -89,6 +121,14 @@ public class VideoControllerTest {
             .andExpect(jsonPath("$", hasItem(TEST_VIDEO)));
     }
 
+    @Test
+    void getAllVideosLeavesOutOtherFilesAndFolders() throws Exception {
+        mvc.perform(get("/api/videos"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", not(hasItem("junit-notes.txt"))))
+            .andExpect(jsonPath("$", not(hasItem("junit-folder.mp4"))));
+    }
+
     // GET /api/video/{fileName}
 
     @Test
@@ -101,6 +141,28 @@ public class VideoControllerTest {
     @Test
     void getVideoUnknownFileReturns404() throws Exception {
         mvc.perform(get("/api/video/does-not-exist.mp4"))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getVideoSendsContentTypeForExtension() throws Exception {
+        mvc.perform(get("/api/video/" + MOV_VIDEO))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType("video/quicktime"));
+    }
+
+    @Test
+    void getVideoInvalidNameReturns400() throws Exception {
+        for (String name : new String[] {"notes.txt", "..evil.mp4", "no-extension"}) {
+            mvc.perform(get("/api/video/" + name))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invalid video file name: " + name));
+        }
+    }
+
+    @Test
+    void getVideoFolderReturns404() throws Exception {
+        mvc.perform(get("/api/video/junit-folder.mp4"))
             .andExpect(status().isNotFound());
     }
 
@@ -117,6 +179,19 @@ public class VideoControllerTest {
     void getThumbnailUnknownFileReturns404() throws Exception {
         mvc.perform(get("/api/thumbnail/does-not-exist.mp4"))
             .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getThumbnailInvalidNameReturns400() throws Exception {
+        mvc.perform(get("/api/thumbnail/notes.txt"))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getThumbnailVideoWithNoFramesReturns422() throws Exception {
+        mvc.perform(get("/api/thumbnail/" + EMPTY_VIDEO))
+            .andExpect(status().isUnprocessableEntity())
+            .andExpect(jsonPath("$.error").value("Video has no frames to make a thumbnail from"));
     }
 
     @Test

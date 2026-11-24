@@ -1,5 +1,6 @@
 package api;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -115,6 +116,77 @@ public class JobControllerTest {
             .andExpect(status().isNotFound());
     }
 
+    @Test
+    void startProcessMissingParamsSaysWhichOne() throws Exception {
+        mvc.perform(post("/api/process/" + TEST_VIDEO).param("targetColor", "FF0000"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("Missing threshold query parameter."));
+    }
+
+    @Test
+    void startProcessNonNumberThresholdReturnsJsonError() throws Exception {
+        mvc.perform(post("/api/process/" + TEST_VIDEO)
+                .param("targetColor", "FF0000")
+                .param("threshold", "abc"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("threshold has an invalid value: abc"));
+    }
+
+    @Test
+    void startProcessInvalidColorsReturn400() throws Exception {
+        for (String color : new String[] {"FFF", "#FF0000", "GG0000", "FF00000", "red"}) {
+            mvc.perform(post("/api/process/" + TEST_VIDEO)
+                    .param("targetColor", color)
+                    .param("threshold", "100"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(containsString("targetColor")));
+        }
+    }
+
+    @Test
+    void startProcessThresholdOutOfRangeReturns400() throws Exception {
+        for (String threshold : new String[] {"-1", "442", "99999"}) {
+            mvc.perform(post("/api/process/" + TEST_VIDEO)
+                    .param("targetColor", "FF0000")
+                    .param("threshold", threshold))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(containsString("threshold")));
+        }
+    }
+
+    @Test
+    void startProcessAcceptsThresholdLimits() throws Exception {
+        for (String threshold : new String[] {"0", "441"}) {
+            mvc.perform(post("/api/process/" + TEST_VIDEO)
+                    .param("targetColor", "ff0000")
+                    .param("threshold", threshold))
+                .andExpect(status().isAccepted());
+        }
+    }
+
+    @Test
+    void startProcessStoresColorInUpperCase() throws Exception {
+        MvcResult result = mvc.perform(post("/api/process/" + TEST_VIDEO)
+                .param("targetColor", "ffa200")
+                .param("threshold", "100"))
+            .andExpect(status().isAccepted())
+            .andReturn();
+        String jobId = com.jayway.jsonpath.JsonPath.read(result.getResponse().getContentAsString(), "$.jobId");
+        mvc.perform(get("/api/jobs/" + jobId))
+            .andExpect(jsonPath("$.targetColor").value("FFA200"));
+    }
+
+    @Test
+    void startProcessInvalidFileNamesReturn400() throws Exception {
+        for (String name : new String[] {"notes.txt", "no-extension", "..evil.mp4"}) {
+            mvc.perform(post("/api/process/" + name)
+                    .param("targetColor", "FF0000")
+                    .param("threshold", "100"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(containsString("Invalid video file name")));
+        }
+    }
+
     // GET /api/process/{jobId}/status
 
     @Test
@@ -145,8 +217,15 @@ public class JobControllerTest {
 
     @Test
     void jobStatusUnknownIdReturns404() throws Exception {
-        mvc.perform(get("/api/process/not-a-job/status"))
+        mvc.perform(get("/api/process/" + UUID.randomUUID() + "/status"))
             .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void jobStatusMalformedIdReturns400() throws Exception {
+        mvc.perform(get("/api/process/not-a-job/status"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("Invalid job ID: not-a-job"));
     }
 
     // GET /api/jobs
@@ -173,8 +252,14 @@ public class JobControllerTest {
 
     @Test
     void getJobUnknownIdReturns404() throws Exception {
-        mvc.perform(get("/api/jobs/not-a-job"))
+        mvc.perform(get("/api/jobs/" + UUID.randomUUID()))
             .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getJobMalformedIdReturns400() throws Exception {
+        mvc.perform(get("/api/jobs/not-a-job"))
+            .andExpect(status().isBadRequest());
     }
 
     // GET /api/result/{jobId}
@@ -195,10 +280,11 @@ public class JobControllerTest {
     }
 
     @Test
-    void getResultNotDoneReturns404() throws Exception {
+    void getResultStillProcessingReturns409() throws Exception {
         String id = createJob(JobStatus.PROCESSING);
         mvc.perform(get("/api/result/" + id))
-            .andExpect(status().isNotFound());
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error").value(containsString("not ready")));
     }
 
     @Test
@@ -218,7 +304,13 @@ public class JobControllerTest {
 
     @Test
     void getResultUnknownIdReturns404() throws Exception {
-        mvc.perform(get("/api/result/not-a-job"))
+        mvc.perform(get("/api/result/" + UUID.randomUUID()))
             .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getResultMalformedIdReturns400() throws Exception {
+        mvc.perform(get("/api/result/not-a-job"))
+            .andExpect(status().isBadRequest());
     }
 }
