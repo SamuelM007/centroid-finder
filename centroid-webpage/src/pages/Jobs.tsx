@@ -7,7 +7,7 @@ import { withData, type WithDataProps } from '../hoc/withData';
 import { api, type Job } from '../api';
 import { formatStarted } from '../lib/format';
 
-// One job in the table
+/** One row of the Jobs table, with a link to the job's results page. */
 const JobRow = ({ job }: { job: Job }) => (
   <tr>
     <td className="mono">{job.id.slice(0, 8)}</td>
@@ -28,6 +28,10 @@ const JobRow = ({ job }: { job: Job }) => (
   </tr>
 );
 
+/**
+ * The status filter and the table of jobs. `data` (every job, newest first) comes from
+ * the withData HOC. Shows a message instead when there are no jobs yet.
+ */
 function JobsTable({ data: jobs }: WithDataProps<Job[]>) {
   const [filter, setFilter] = useState<StatusFilterValue>('all');
 
@@ -77,12 +81,16 @@ function JobsTable({ data: jobs }: WithDataProps<Job[]>) {
   );
 }
 
-// refresh every 3 seconds while any job is still processing
+/**
+ * {@link JobsTable} wrapped by the withData HOC. Reloads every 3 seconds while any job is
+ * still processing, so statuses update without refreshing the page.
+ */
 const JobsTableWithData = withData<Job[]>(JobsTable, () => api.getJobs(), {
   loadingMessage: 'Loading jobs…',
   pollWhile: (jobs) => jobs.some((j) => j.status === 'processing'),
 });
 
+/** The job history page at `/jobs`: every processing run saved in the backend's database. */
 const Jobs = () => (
   <main className="page">
     <div className="page-head">

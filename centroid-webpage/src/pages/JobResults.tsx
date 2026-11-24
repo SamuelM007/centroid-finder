@@ -11,8 +11,15 @@ import ResultSummary from '../components/ResultSummary';
 import PositionChartCard from '../components/PositionChartCard';
 import CsvPreview from '../components/CsvPreview';
 
-// /jobs/:jobId — job progress, then the tracked path drawn over the video,
-// an x/y chart, a summary with a download link, and a CSV preview
+/**
+ * The results page at `/jobs/:jobId`.
+ *
+ * While the job runs, shows its progress (and keeps checking it with {@link useJob}).
+ * When it's done, loads the CSV with {@link useTrackCsv} and shows the video with the
+ * tracked path drawn over it, a summary with a download link, a position chart and a
+ * CSV preview. If it failed, shows the error with a "Try again" link. Also handles a
+ * job that doesn't exist and a lost connection.
+ */
 const JobResults = () => {
   const { jobId = '' } = useParams<{ jobId: string }>();
   const { job, notFound, connectionLost } = useJob(jobId);
@@ -23,6 +30,7 @@ const JobResults = () => {
   const [video, setVideo] = useState<VideoInfo | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  /** Jumps the video to a time; called when the position chart is clicked. */
   const seek = (seconds: number) => {
     if (videoRef.current) videoRef.current.currentTime = seconds;
     setTime(seconds);
