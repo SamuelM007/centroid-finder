@@ -26,7 +26,7 @@ The original single-image version (`ImageSummaryApp`) is in [`src/`](src/), with
 | **Job status**: checks `GET /api/process/{jobId}/status` every 2 seconds, then links to the CSV | [`hooks/useJobStatus.ts`](centroid-webpage/src/hooks/useJobStatus.ts) |
 | **Higher-order component**: `withData` handles fetching, loading, errors, retry and polling | [`hoc/withData.tsx`](centroid-webpage/src/hoc/withData.tsx) |
 | **Mock data** for working without the backend | [`mock/`](centroid-webpage/src/mock/) |
-| **Automated tests**: 73 frontend tests (Vitest + React Testing Library), plus JUnit tests for the processor | `*.test.ts(x)` files, [`processor/src/test/`](processor/src/test/java/) |
+| **Automated tests**: 97 frontend tests (Vitest + React Testing Library), plus JUnit tests for the processor | `*.test.ts(x)` files, [`processor/src/test/`](processor/src/test/java/) |
 
 ### Unique features
 
@@ -132,12 +132,14 @@ The tests use [Vitest](https://vitest.dev/) and [React Testing Library](https://
 | Test file | Covers |
 | --- | --- |
 | `lib/centroid.test.ts` | The Java port: color distance, binarizing (strict `>`), connectivity, centroids, ordering, `(-1, -1)` |
-| `lib/csv.test.ts`, `lib/palette.test.ts`, `lib/format.test.ts` | CSV parsing and gaps, suggested colors, date and time formatting |
+| `lib/csv.test.ts`, `lib/palette.test.ts`, `lib/format.test.ts` | CSV parsing, gaps and summary numbers, suggested colors, date and time formatting |
+| `lib/pixels.test.ts`, `lib/previewHint.test.ts`, `lib/settings.test.ts` | Color picking from the frame, the preview hints, reading settings from the URL |
 | `hoc/withData.test.tsx` | The HOC: loading, data, error + Retry, polling |
 | `pages/VideoChooser.test.tsx` | Video list, links to `/preview/...`, statuses, filtering, error state |
 | `components/SettingsPanel.test.tsx` | Slider, hex field, color picker, swatches |
 | `components/JobPanel.test.tsx` | The POST URL and settings, status polling, CSV link, failures |
 | `pages/Jobs.test.tsx` | Job table and status filters |
+| `pages/JobResults.test.tsx`, `components/JobStepper.test.tsx` | Results page: summary, CSV preview, links, processing / error / not found states, progress steps |
 | `App.test.tsx` | Routes: `/` → `/videos`, `/preview/:filename`, settings from the URL, 404 |
 | `mock/mockApi.test.ts` | The mock backend's job lifecycle |
 
@@ -186,10 +188,14 @@ centroid-webpage/
   src/
     api/              types, the real API client, and the switch between real and mock
     mock/             mock videos, jobs and a mock API
-    lib/              centroid.ts (Java port), csv, palette, color and format helpers
+    lib/              centroid.ts (Java port), plus plain helper functions: csv, drawing,
+                      pixels, palette, previewHint, settings, color, format
     hoc/              withData higher-order component
-    hooks/            useJobStatus (polls a job's status)
-    components/       Header, VideoCard, FramePreview, SettingsPanel, JobPanel, PositionChart, StatusPill
+    hooks/            useJobStatus, useJob (poll a job), useTrackCsv (load a job's CSV)
+    components/       shared: Header, VideoCard, StatusPill, StatusFilter, ColorChip
+                      preview page: FramePreview, FrameStats, SettingsPanel, JobPanel
+                      results page: JobHeader, JobStepper, TrackedVideo, ResultSummary,
+                                    PositionChartCard, PositionChart, CsvPreview
     pages/            VideoChooser, Preview, Jobs, JobResults
   public/mock/        mock thumbnail and CSV
 docs/screenshots/     the screenshots below
