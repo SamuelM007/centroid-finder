@@ -49,9 +49,9 @@ public ResponseEntity<Map<String, String>> startProcess(@PathVariable String fil
     try {
         Process process = builder.start();
         process.onExit().thenAccept(p ->
-            jobs.updateStatus(jobId, p.exitValue() == 0 ? "done" : "error"));
+            jobs.updateStatus(jobId, p.exitValue() == 0 ? JobStatus.DONE : JobStatus.ERROR));
     } catch (IOException e) {
-        jobs.updateStatus(jobId, "error");
+        jobs.updateStatus(jobId, JobStatus.ERROR);
         return ResponseEntity.internalServerError().body(Map.of("error", "Error starting job"));
     }
     //Express version: res.status(202).send(jobId)
@@ -62,17 +62,17 @@ public ResponseEntity<Map<String, String>> startProcess(@PathVariable String fil
 //checks if job is done
 @GetMapping("/api/process/{jobId}/status")
 public ResponseEntity<Map<String, String>> jobStatus(@PathVariable String jobId){
-    String status = jobs.findStatus(jobId);
+    JobStatus status = jobs.findStatus(jobId);
     if (status == null) {
         return ResponseEntity.status(404).body(Map.of("error", "Job ID not found"));
     }
-    if (status.equals("done")) {
-        return ResponseEntity.ok(Map.of("status", status, "result", "/api/result/" + jobId));
+    if (status == JobStatus.DONE) {
+        return ResponseEntity.ok(Map.of("status", status.value(), "result", "/api/result/" + jobId));
     }
-    if (status.equals("error")) {
-        return ResponseEntity.ok(Map.of("status", status, "error", "Error processing video"));
+    if (status == JobStatus.ERROR) {
+        return ResponseEntity.ok(Map.of("status", status.value(), "error", "Error processing video"));
     }
-    return ResponseEntity.ok(Map.of("status", status));
+    return ResponseEntity.ok(Map.of("status", status.value()));
 }
 
 // all jobs, newest first (for the jobs history page)
@@ -95,12 +95,12 @@ public ResponseEntity<?> getJob(@PathVariable String jobId) {
 @GetMapping("/api/result/{jobId}")
 public ResponseEntity<?> getResult(@PathVariable String jobId) {
     // look the id up first so only real job ids are ever turned into a file path
-    String status = jobs.findStatus(jobId);
+    JobStatus status = jobs.findStatus(jobId);
     if (status == null) {
         return ResponseEntity.status(404).body(Map.of("error", "Job ID not found"));
     }
     File csv = new File("metadata/" + jobId + ".csv");
-    if (!status.equals("done") || !csv.isFile()) {
+    if (status != JobStatus.DONE || !csv.isFile()) {
         return ResponseEntity.status(404).body(Map.of("error", "Result not available for this job"));
     }
     return ResponseEntity.ok()

@@ -22,21 +22,21 @@ public class JobRepository {
                 created_at   TEXT DEFAULT CURRENT_TIMESTAMP
             )""");
         // Any job still marked 'processing' at startup was cut off by the last shutdown
-        db.update("UPDATE jobs SET status = 'error' WHERE status = 'processing'");
+        db.update("UPDATE jobs SET status = ? WHERE status = ?", JobStatus.ERROR.value(), JobStatus.PROCESSING.value());
     }
 
     public void create(String id, String fileName, String targetColor, int threshold) {
-        db.update("INSERT INTO jobs (id, file_name, target_color, threshold, status) VALUES (?, ?, ?, ?, 'processing')",
-                id, fileName, targetColor, threshold);
+        db.update("INSERT INTO jobs (id, file_name, target_color, threshold, status) VALUES (?, ?, ?, ?, ?)",
+                id, fileName, targetColor, threshold, JobStatus.PROCESSING.value());
     }
 
-    public void updateStatus(String id, String status) {
-        db.update("UPDATE jobs SET status = ? WHERE id = ?", status, id);
+    public void updateStatus(String id, JobStatus status) {
+        db.update("UPDATE jobs SET status = ? WHERE id = ?", status.value(), id);
     }
 
-    public String findStatus(String id) {
+    public JobStatus findStatus(String id) {
         List<String> rows = db.queryForList("SELECT status FROM jobs WHERE id = ?", String.class, id);
-        return rows.isEmpty() ? null : rows.get(0);
+        return rows.isEmpty() ? null : JobStatus.fromValue(rows.get(0));
     }
 
     private static final String JOB_COLUMNS =
