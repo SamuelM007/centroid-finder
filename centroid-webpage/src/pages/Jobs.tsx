@@ -1,20 +1,35 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import StatusPill from '../components/StatusPill';
+import StatusFilter, { type StatusFilterValue } from '../components/StatusFilter';
+import ColorChip from '../components/ColorChip';
 import { withData, type WithDataProps } from '../hoc/withData';
-import { api, type Job, type JobStatus } from '../api';
+import { api, type Job } from '../api';
 import { formatStarted } from '../lib/format';
 
-type Filter = 'all' | JobStatus;
-const FILTERS: Array<[Filter, string]> = [
-  ['all', 'All'],
-  ['processing', 'Processing'],
-  ['done', 'Done'],
-  ['error', 'Error'],
-];
+// One job in the table
+const JobRow = ({ job }: { job: Job }) => (
+  <tr>
+    <td className="mono">{job.id.slice(0, 8)}</td>
+    <td className="strong">{job.fileName}</td>
+    <td>
+      <ColorChip hex={job.targetColor} />
+    </td>
+    <td className="mono">{job.threshold}</td>
+    <td>
+      <StatusPill status={job.status} />
+    </td>
+    <td className="muted">{formatStarted(job.createdAt)}</td>
+    <td className="table__action">
+      <Link to={`/jobs/${encodeURIComponent(job.id)}`} aria-label={`View job ${job.id.slice(0, 8)}`}>
+        View
+      </Link>
+    </td>
+  </tr>
+);
 
 function JobsTable({ data: jobs }: WithDataProps<Job[]>) {
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<StatusFilterValue>('all');
 
   if (jobs.length === 0) {
     return (
@@ -28,20 +43,7 @@ function JobsTable({ data: jobs }: WithDataProps<Job[]>) {
 
   return (
     <>
-      <div role="group" aria-label="Filter by status" className="chips">
-        {FILTERS.map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            className={`chip${filter === value ? ' chip--selected' : ''}`}
-            aria-pressed={filter === value}
-            onClick={() => setFilter(value)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
+      <StatusFilter value={filter} onChange={setFilter} />
       <div className="card card--flush table-wrap">
         <table className="table table--jobs">
           <thead>
@@ -58,27 +60,8 @@ function JobsTable({ data: jobs }: WithDataProps<Job[]>) {
             </tr>
           </thead>
           <tbody>
-            {shown.map((j) => (
-              <tr key={j.id}>
-                <td className="mono">{j.id.slice(0, 8)}</td>
-                <td className="strong">{j.fileName}</td>
-                <td>
-                  <span className="meta-item">
-                    <span className="color-chip" style={{ background: `#${j.targetColor}` }} aria-hidden="true" />
-                    <span className="mono">{j.targetColor.toUpperCase()}</span>
-                  </span>
-                </td>
-                <td className="mono">{j.threshold}</td>
-                <td>
-                  <StatusPill status={j.status} />
-                </td>
-                <td className="muted">{formatStarted(j.createdAt)}</td>
-                <td className="table__action">
-                  <Link to={`/jobs/${encodeURIComponent(j.id)}`} aria-label={`View job ${j.id.slice(0, 8)}`}>
-                    View
-                  </Link>
-                </td>
-              </tr>
+            {shown.map((job) => (
+              <JobRow key={job.id} job={job} />
             ))}
             {shown.length === 0 && (
               <tr>

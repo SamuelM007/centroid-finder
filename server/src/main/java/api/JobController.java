@@ -38,26 +38,26 @@ public JobController(JobRepository jobs) {
  * Starts processing a video in the background. Handles
  * {@code POST /api/process/{fileName}?targetColor=RRGGBB&threshold=N}.
  *
- * Creates a job in the database, then runs the processor jar as a separate process.
- * When that process exits, the job is marked {@code done} (exit code 0) or {@code error}.
+ * Checks every input first, then creates a job in the database and runs the processor jar
+ * as a separate process. When that process exits, the job is marked {@code done}
+ * (exit code 0) or {@code error}.
  *
- * @param fileName    the name of a file in the {@code videos/} folder
- * @param targetColor the color to track, as a hex string like {@code FF0000}
- * @param threshold   the color distance threshold for binarizing
- * @return 202 with {@code {"jobId": "..."}}, 400 if a param is missing, 404 if the video
- *         doesn't exist, or 500 if the processor couldn't be started
+ * @param fileName    the name of a video file in the {@code videos/} folder
+ * @param targetColor the color to track, as 6 hex digits like {@code FF0000} (any case)
+ * @param threshold   the color distance threshold for binarizing, 0 to 441
+ * @return 202 with {@code {"jobId": "..."}}, 400 if a param is missing or invalid,
+ *         404 if the video doesn't exist, or 500 if the processor couldn't be started
  */
  @PostMapping("/api/process/{fileName}")
 public ResponseEntity<Map<String, String>> startProcess(@PathVariable String fileName,
-                                           @RequestParam(required = false) String targetColor,
-                                           @RequestParam(required = false) Integer threshold) {
-    // both settings are needed to run the processor, so reject the request if either is missing
-    if (targetColor == null || threshold == null) {
-        return ResponseEntity.badRequest()
-            .body(Map.of("error", "Missing targetColor or threshold query parameter."));
-    }
+                                           @RequestParam String targetColor,
+                                           @RequestParam Integer threshold) {
+    // validate everything before touching the file system or starting a process.
+    // a bad value throws InvalidInputException, which ApiExceptionHandler turns into a 400
+    String color = InputValidator.requireHexColor(targetColor);
+    int checkedThreshold = InputValidator.requireThreshold(threshold);
+    File video = InputValidator.requireVideoFile(fileName);
     // make sure the video actually exists before starting a job for it
-    File video = new File("videos/" + fileName);
     if (!video.isFile()) {
         return ResponseEntity.status(404).body(Map.of("error", "Video not found: " + fileName));
     }
@@ -66,15 +66,15 @@ public ResponseEntity<Map<String, String>> startProcess(@PathVariable String fil
     // runs the processor jar as its own process:
     // java -jar videoprocessor.jar <input video> <output csv> <target color> <threshold>
     ProcessBuilder builder = new ProcessBuilder("java", "-jar", "../processor/target/videoprocessor.jar",
-        "videos/" + fileName,
+        video.getPath(),
         "metadata/" + jobId + ".csv",
-        targetColor,
-        String.valueOf(threshold));
+        color,
+        String.valueOf(checkedThreshold));
     // throw away the processor's console output so it doesn't fill up the server log
     builder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
     builder.redirectError(ProcessBuilder.Redirect.DISCARD);
     // create the job row before starting, so a fast exit can't update a row that doesn't exist yet
-    jobs.create(jobId, fileName, targetColor, threshold);
+    jobs.create(jobId, fileName, color, checkedThreshold);
     try {
         // start the processor in the background. this doesn't wait for it to finish
         Process process = builder.start();
@@ -98,10 +98,11 @@ public ResponseEntity<Map<String, String>> startProcess(@PathVariable String fil
  * @param jobId the ID returned when the job was started
  * @return 200 with {@code {"status": ...}}. A {@code done} job also includes a {@code result} link
  *         to its CSV, and an {@code error} job includes an {@code error} message.
- *         Returns 404 if no job has this ID.
+ *         Returns 400 if the ID isn't a valid UUID, or 404 if no job has this ID.
  */
 @GetMapping("/api/process/{jobId}/status")
 public ResponseEntity<Map<String, String>> jobStatus(@PathVariable String jobId){
+    InputValidator.requireJobId(jobId);
     JobStatus status = jobs.findStatus(jobId);
     if (status == null) {
         return ResponseEntity.status(404).body(Map.of("error", "Job ID not found"));
@@ -130,10 +131,11 @@ public ResponseEntity<List<Map<String, Object>>> getAllJobs() {
  * Returns one job with its settings and status. Handles {@code GET /api/jobs/{jobId}}.
  *
  * @param jobId the job's ID
- * @return 200 with the job, or 404 if no job has this ID
+ * @return 200 with the job, 400 if the ID isn't a valid UUID, or 404 if no job has this ID
  */
 @GetMapping("/api/jobs/{jobId}")
 public ResponseEntity<?> getJob(@PathVariable String jobId) {
+    InputValidator.requireJobId(jobId);
     Map<String, Object> job = jobs.findById(jobId);
     if (job == null) {
         return ResponseEntity.status(404).body(Map.of("error", "Job ID not found"));
@@ -146,15 +148,20 @@ public ResponseEntity<?> getJob(@PathVariable String jobId) {
  * Each row is {@code seconds,x,y} for one frame.
  *
  * @param jobId the job's ID
- * @return 200 with the CSV as {@code text/csv}, or 404 if no job has this ID,
- *         the job isn't done, or its CSV file is missing
+ * @return 200 with the CSV as {@code text/csv}, 400 if the ID isn't a valid UUID,
+ *         404 if no job has this ID, the job failed, or its CSV file is missing,
+ *         or 409 if the job is still processing
  */
 @GetMapping("/api/result/{jobId}")
 public ResponseEntity<?> getResult(@PathVariable String jobId) {
-    // look the id up first so only real job ids are ever turned into a file path
+    // only well-formed, real job ids are ever turned into a file path
+    InputValidator.requireJobId(jobId);
     JobStatus status = jobs.findStatus(jobId);
     if (status == null) {
         return ResponseEntity.status(404).body(Map.of("error", "Job ID not found"));
+    }
+    if (status == JobStatus.PROCESSING) {
+        return ResponseEntity.status(409).body(Map.of("error", "Result not ready yet; the job is still processing"));
     }
     // each job writes its output to metadata/<jobId>.csv
     File csv = new File("metadata/" + jobId + ".csv");

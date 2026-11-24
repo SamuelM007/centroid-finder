@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gapRanges, isMatch, matchedSegments, parseTrackCsv, rowIndexAt } from './csv';
+import { gapRanges, isMatch, matchedSegments, parseTrackCsv, rowIndexAt, summarizeTrack } from './csv';
 
 const rows = parseTrackCsv('0.0,1,10\n0.5,2,11\n1.0,-1,-1\n1.5,-1,-1\n2.0,5,5\n');
 
@@ -12,6 +12,16 @@ describe('parseTrackCsv', () => {
 
   it('skips a header, blank lines and Windows line endings', () => {
     expect(parseTrackCsv('seconds,x,y\r\n0.1,3,4\r\n\r\n')).toEqual([{ seconds: 0.1, x: 3, y: 4 }]);
+  });
+});
+
+describe('summarizeTrack', () => {
+  it('counts frames, matches and duration', () => {
+    expect(summarizeTrack(rows)).toEqual({ frames: 5, matched: 3, noMatch: 2, trackedPercent: 60, duration: 2 });
+  });
+
+  it('handles an empty CSV', () => {
+    expect(summarizeTrack([])).toEqual({ frames: 0, matched: 0, noMatch: 0, trackedPercent: 0, duration: 0 });
   });
 });
 

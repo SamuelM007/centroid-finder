@@ -1,11 +1,8 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
-import { analyzeFrame, rgbToHex, type Coordinate } from '../lib/centroid';
-
-export interface PreviewStats {
-  matchingPercent: number;
-  groups: number;
-  largest: Coordinate; // (-1, -1) when nothing matched
-}
+import { analyzeFrame } from '../lib/centroid';
+import { paintBinary } from '../lib/drawing';
+import { averageColorAt, clickToPixel, readImagePixels } from '../lib/pixels';
+import type { PreviewStats } from '../lib/previewHint';
 
 interface Props {
   thumbnailUrl: string;
@@ -27,17 +24,11 @@ const FramePreview = ({ thumbnailUrl, color, threshold, onPickColor, onStats, on
 
   // When the thumbnail has loaded, read its pixels once
   const handleLoad = () => {
-    const img = imgRef.current;
-    if (!img) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return;
-    ctx.drawImage(img, 0, 0);
-    const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    setFrame(data);
-    onFrameLoaded(data.data);
+    if (!imgRef.current) return;
+    const pixels = readImagePixels(imgRef.current);
+    if (!pixels) return;
+    setFrame(pixels);
+    onFrameLoaded(pixels.data);
   };
 
   // Re-run the binarization whenever the frame, color or threshold changes.
@@ -47,33 +38,7 @@ const FramePreview = ({ thumbnailUrl, color, threshold, onPickColor, onStats, on
     const raf = requestAnimationFrame(() => {
       const { width, height } = frame;
       const result = analyzeFrame(frame.data, width, height, color, threshold);
-
-      const canvas = binaryRef.current;
-      const ctx = canvas?.getContext('2d');
-      if (canvas && ctx) {
-        canvas.width = width;
-        canvas.height = height;
-        const out = ctx.createImageData(width, height);
-        for (let i = 0; i < result.binary.pixels.length; i++) {
-          const v = result.binary.pixels[i] ? 255 : 0;
-          out.data[i * 4] = v;
-          out.data[i * 4 + 1] = v;
-          out.data[i * 4 + 2] = v;
-          out.data[i * 4 + 3] = 255;
-        }
-        ctx.putImageData(out, 0, 0);
-
-        if (result.largest.x !== -1) {
-          ctx.beginPath();
-          ctx.arc(result.largest.x, result.largest.y, Math.max(6, width / 80), 0, Math.PI * 2);
-          ctx.fillStyle = '#F97316';
-          ctx.fill();
-          ctx.lineWidth = Math.max(2, width / 400);
-          ctx.strokeStyle = '#18181B';
-          ctx.stroke();
-        }
-      }
-
+      if (binaryRef.current) paintBinary(binaryRef.current, result.binary, result.largest);
       onStats({
         matchingPercent: (result.matchingPixels / (width * height)) * 100,
         groups: result.groups.length,
@@ -83,27 +48,12 @@ const FramePreview = ({ thumbnailUrl, color, threshold, onPickColor, onStats, on
     return () => cancelAnimationFrame(raf);
   }, [frame, color, threshold, onStats]);
 
-  // Clicking the original frame picks the average color of the 5x5 pixels under the cursor
+  // Clicking the original frame picks the color under the cursor
   const pickColor = (e: MouseEvent<HTMLButtonElement>) => {
     if (!frame) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const cx = Math.floor(((e.clientX - rect.left) / rect.width) * frame.width);
-    const cy = Math.floor(((e.clientY - rect.top) / rect.height) * frame.height);
-    let r = 0;
-    let g = 0;
-    let b = 0;
-    let n = 0;
-    for (let y = cy - 2; y <= cy + 2; y++) {
-      for (let x = cx - 2; x <= cx + 2; x++) {
-        if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) continue;
-        const p = (y * frame.width + x) * 4;
-        r += frame.data[p];
-        g += frame.data[p + 1];
-        b += frame.data[p + 2];
-        n++;
-      }
-    }
-    if (n > 0) onPickColor(rgbToHex(Math.round(r / n), Math.round(g / n), Math.round(b / n)));
+    const { x, y } = clickToPixel(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect(), frame.width, frame.height);
+    const hex = averageColorAt(frame, x, y);
+    if (hex) onPickColor(hex);
   };
 
   if (failed) {

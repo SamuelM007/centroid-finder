@@ -1,15 +1,15 @@
 import { useCallback, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
-import FramePreview, { type PreviewStats } from '../components/FramePreview';
+import FramePreview from '../components/FramePreview';
+import FrameStats from '../components/FrameStats';
 import SettingsPanel from '../components/SettingsPanel';
-import { HEX_RE, MAX_THRESHOLD, normalizeHex } from '../lib/color';
 import JobPanel from '../components/JobPanel';
 import { dominantColors } from '../lib/palette';
+import { getPreviewHint, type PreviewStats } from '../lib/previewHint';
+import { settingsFromUrl } from '../lib/settings';
 
-// Settings that track the salamander in the sample video well
-const DEFAULT_COLOR = '#660005';
-const DEFAULT_THRESHOLD = 67;
+// shown until the first frame has loaded and its common colors are known
 const FALLBACK_PRESETS = ['#660005', '#000000', '#E11D48', '#16A34A', '#2563EB'];
 
 // /preview/:filename — tune the color and threshold on the first frame, then process the video
@@ -18,30 +18,16 @@ const Preview = () => {
   const [searchParams] = useSearchParams();
 
   // "Run again" on a results page links here with that job's settings in the URL
-  const urlColor = searchParams.get('color');
-  const urlThreshold = Number(searchParams.get('threshold'));
-  const [color, setColor] = useState(urlColor && HEX_RE.test(urlColor) ? normalizeHex(urlColor) : DEFAULT_COLOR);
-  const [threshold, setThreshold] = useState(
-    Number.isInteger(urlThreshold) && urlThreshold > 0 && urlThreshold <= MAX_THRESHOLD ? urlThreshold : DEFAULT_THRESHOLD,
-  );
+  const [initial] = useState(() => settingsFromUrl(searchParams.get('color'), searchParams.get('threshold')));
+  const [color, setColor] = useState(initial.color);
+  const [threshold, setThreshold] = useState(initial.threshold);
   const [stats, setStats] = useState<PreviewStats | null>(null);
   const [presets, setPresets] = useState<string[] | null>(null);
 
   // useCallback so FramePreview doesn't see a new function on every render
   const handleFrameLoaded = useCallback((rgba: Uint8ClampedArray) => setPresets(dominantColors(rgba)), []);
 
-  let hint = { text: 'Loading the first frame…', kind: 'neutral' };
-  if (stats) {
-    if (stats.groups === 0) {
-      hint = { text: 'Nothing matches. Raise the threshold or click the object in the first frame to pick its color.', kind: 'warn' };
-    } else if (stats.matchingPercent > 20) {
-      hint = { text: 'Loose: a lot of the frame matches. Try lowering the threshold.', kind: 'bad' };
-    } else if (stats.groups > 25) {
-      hint = { text: 'Noisy: many small groups match. Only the largest is tracked, so try a lower threshold.', kind: 'warn' };
-    } else {
-      hint = { text: 'Looks good. The orange dot marks the centroid that will be tracked.', kind: 'good' };
-    }
-  }
+  const hint = getPreviewHint(stats);
 
   return (
     <main className="page">
@@ -86,22 +72,7 @@ const Preview = () => {
 
         <aside className="two-col__side card stack" aria-labelledby="result-heading">
           <h2 id="result-heading">This frame</h2>
-          <dl className="stats-list">
-            <div>
-              <dt>Matching pixels</dt>
-              <dd className="mono">{stats ? `${stats.matchingPercent.toFixed(1)}%` : '–'}</dd>
-            </div>
-            <div>
-              <dt>Groups found</dt>
-              <dd className="mono">{stats ? stats.groups : '–'}</dd>
-            </div>
-            <div>
-              <dt>Largest centroid</dt>
-              <dd className="mono" data-testid="centroid">
-                {stats ? `(${stats.largest.x}, ${stats.largest.y})` : '–'}
-              </dd>
-            </div>
-          </dl>
+          <FrameStats stats={stats} />
           <p className={`hint hint--${hint.kind}`}>{hint.text}</p>
           <div className="divider-top">
             <JobPanel fileName={filename} color={color} threshold={threshold} />

@@ -29,38 +29,43 @@ import org.springframework.web.bind.annotation.RestController;
 public class VideoController {
 
 /**
- * Streams a video file. Handles {@code GET /api/video/{fileName}}.
+ * Streams a video file (supports seeking). Handles {@code GET /api/video/{fileName}}.
  *
- * @param fileName the name of a file in the {@code videos/} folder
- * @return 200 with the video as {@code video/mp4}, or 404 if the file doesn't exist
+ * @param fileName the name of a video file in the {@code videos/} folder
+ * @return 200 with the video, sent with the content type for its extension
+ *         (e.g. {@code video/mp4}, {@code video/quicktime}), 400 if the file name is invalid,
+ *         or 404 if the file doesn't exist
  */
 @GetMapping("/api/video/{fileName}")
  public ResponseEntity<Resource> getVideo(@PathVariable String fileName){
-    File file = new File("videos/"+fileName);
-    if(!file.exists()){
+    File file = InputValidator.requireVideoFile(fileName);
+    if(!file.isFile()){
         return ResponseEntity.notFound().build();
     }
     Resource video = new FileSystemResource(file);
     return ResponseEntity.ok()
-    .contentType(MediaType.parseMediaType("video/mp4"))
+    .contentType(MediaType.parseMediaType(InputValidator.videoContentType(fileName)))
     .body(video);
  }
 
 /**
- * Lists the names of every file in the {@code videos/} folder. Handles {@code GET /api/videos}.
+ * Lists the video files in the {@code videos/} folder. Handles {@code GET /api/videos}.
+ * Folders and files without a video extension (like {@code .DS_Store}) are left out.
  *
  * @return 200 with a JSON array of file names, or 500 with an error message if the folder can't be read
  */
   @GetMapping("/api/videos")
 public ResponseEntity<?> getAllVideos(){
-    File[] files = new File("videos").listFiles();
+    File[] files = new File(InputValidator.VIDEO_DIR).listFiles();
     if (files == null) {
         return ResponseEntity.internalServerError()
             .body(Map.of("error", "Error reading video directory"));
     }
     List<String> names = new ArrayList<>();
     for (File file : files) {
-        names.add(file.getName());
+        if (file.isFile() && InputValidator.isValidVideoName(file.getName())) {
+            names.add(file.getName());
+        }
     }
     return ResponseEntity.ok(names);
 }
@@ -68,24 +73,28 @@ public ResponseEntity<?> getAllVideos(){
 /**
  * Returns the first frame of a video as a JPEG. Handles {@code GET /api/thumbnail/{fileName}}.
  *
- * @param fileName the name of a file in the {@code videos/} folder
- * @return 200 with the frame as {@code image/jpeg}, 404 if the file doesn't exist,
+ * @param fileName the name of a video file in the {@code videos/} folder
+ * @return 200 with the frame as {@code image/jpeg}, 400 if the file name is invalid,
+ *         404 if the file doesn't exist, 422 if the file has no video frames,
  *         or 500 with an error message if the file can't be read as a video
  */
 @GetMapping("/api/thumbnail/{fileName}")
 public ResponseEntity<?> getThumbnail(@PathVariable String fileName){
-    // make sure the video exists before trying to open it
-    File file = new File("videos/" + fileName);
-    if (!file.exists()) {
+    // a bad file name throws InvalidInputException, which ApiExceptionHandler turns into a 400
+    File file = InputValidator.requireVideoFile(fileName);
+    if (!file.isFile()) {
         return ResponseEntity.notFound().build();
     }
-    // try-with-resources closes the grabber when we're done, even if something fails
-    try (FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(file)) {
-        // opens the video. throws if the file isn't a video ffmpeg can read
+    // try-with-resources closes the grabber and converter when we're done
+    try (FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(file);
+         Java2DFrameConverter converter = new Java2DFrameConverter()) {
         grabber.start();
-        // grab the first video frame and convert it from a JavaCV Frame to a BufferedImage
-        BufferedImage image = new Java2DFrameConverter().convert(grabber.grabImage());
-        // encode the frame as a jpg in memory instead of saving it to a file
+        BufferedImage image = converter.convert(grabber.grabImage());
+        // grabImage() returns null when there's no frame to read (e.g. an audio-only file)
+        if (image == null) {
+            return ResponseEntity.unprocessableEntity()
+                .body(Map.of("error", "Video has no frames to make a thumbnail from"));
+        }
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         ImageIO.write(image, "jpg", out);
         // send the jpg bytes back so the frontend can use the url as an <img> src

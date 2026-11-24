@@ -46,9 +46,7 @@
   </dependencies>
 
   <build>
-    <!-- Java files live directly in api/ instead of src/main/java/... -->
-    <!-- Tests live in the default src/test/java/ -->
-    <sourceDirectory>api</sourceDirectory>
+    <!-- Standard Maven layout: code in src/main/java/, tests in src/test/java/ -->
     <plugins>
       <plugin>
         <groupId>org.springframework.boot</groupId>
