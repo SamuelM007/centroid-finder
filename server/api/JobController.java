@@ -51,32 +51,42 @@ public JobController(JobRepository jobs) {
 public ResponseEntity<Map<String, String>> startProcess(@PathVariable String fileName,
                                            @RequestParam(required = false) String targetColor,
                                            @RequestParam(required = false) Integer threshold) {
+    // both settings are needed to run the processor, so reject the request if either is missing
     if (targetColor == null || threshold == null) {
         return ResponseEntity.badRequest()
             .body(Map.of("error", "Missing targetColor or threshold query parameter."));
     }
+    // make sure the video actually exists before starting a job for it
     File video = new File("videos/" + fileName);
     if (!video.isFile()) {
         return ResponseEntity.status(404).body(Map.of("error", "Video not found: " + fileName));
     }
+   // random unique id for this job, also used as the name of its output csv
    String jobId = UUID.randomUUID().toString();
+    // runs the processor jar as its own process:
+    // java -jar videoprocessor.jar <input video> <output csv> <target color> <threshold>
     ProcessBuilder builder = new ProcessBuilder("java", "-jar", "../processor/target/videoprocessor.jar",
         "videos/" + fileName,
         "metadata/" + jobId + ".csv",
         targetColor,
         String.valueOf(threshold));
+    // throw away the processor's console output so it doesn't fill up the server log
     builder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
     builder.redirectError(ProcessBuilder.Redirect.DISCARD);
     // create the job row before starting, so a fast exit can't update a row that doesn't exist yet
     jobs.create(jobId, fileName, targetColor, threshold);
     try {
+        // start the processor in the background. this doesn't wait for it to finish
         Process process = builder.start();
+        // when the processor exits, mark the job done if it succeeded (exit code 0), otherwise error
         process.onExit().thenAccept(p ->
             jobs.updateStatus(jobId, p.exitValue() == 0 ? JobStatus.DONE : JobStatus.ERROR));
     } catch (IOException e) {
+        // the processor couldn't be started at all (for example java isn't on the PATH)
         jobs.updateStatus(jobId, JobStatus.ERROR);
         return ResponseEntity.internalServerError().body(Map.of("error", "Error starting job"));
     }
+    // 202 Accepted: the job was started but isn't finished yet. the frontend uses the id to poll its status
     //Express version: res.status(202).send(jobId)
     return ResponseEntity.accepted().body(Map.of("jobId", jobId));
 
