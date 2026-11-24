@@ -9,7 +9,10 @@ interface Props {
   onSeek: (seconds: number) => void;
 }
 
-// The "Position over time" card: a legend, the chart, and how to use it
+/**
+ * The "Position over time" card on the results page: a legend, the {@link PositionChart},
+ * and a line explaining how to use it. Takes the same props as `PositionChart`.
+ */
 const PositionChartCard = (props: Props) => (
   <section className="card stack">
     <div className="card__head">

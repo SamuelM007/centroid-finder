@@ -5,10 +5,11 @@ import ColorChip from './ColorChip';
 
 interface Props {
   job: Job;
+  /** Link to the preview page with this job's settings filled in. */
   runAgainUrl: string;
 }
 
-// Breadcrumb, video name, the job's settings, and the "Run again" link
+/** Top of the results page: breadcrumb, video name, the job's settings, and the "Run again" link. */
 const JobHeader = ({ job, runAgainUrl }: Props) => (
   <div className="page-head">
     <div className="page-head__text">

@@ -5,17 +5,31 @@ import { averageColorAt, clickToPixel, readImagePixels } from '../lib/pixels';
 import type { PreviewStats } from '../lib/previewHint';
 
 interface Props {
+  /** URL of the video's first frame. */
   thumbnailUrl: string;
-  color: string; // "#RRGGBB"
+  /** Target color, `"#RRGGBB"`. */
+  color: string;
+  /** Maximum color distance for a pixel to match (0–441). */
   threshold: number;
+  /** Called with `"#RRGGBB"` when the user clicks a spot on the first frame. */
   onPickColor: (hex: string) => void;
+  /**
+   * Called with the results every time the preview is recalculated. Pass a stable
+   * function (a state setter or `useCallback`), or the preview recalculates every render.
+   */
   onStats: (stats: PreviewStats) => void;
+  /** Called once with the frame's pixels after it loads (used to pick the preset colors). */
   onFrameLoaded: (rgba: Uint8ClampedArray) => void;
 }
 
-// Shows the video's first frame next to its binarized version. The binarized image is
-// recomputed at full resolution whenever the color or threshold changes, using the same
-// logic as the Java processor, and a dot marks the centroid of the largest group.
+/**
+ * Shows the video's first frame next to its binarized (black-and-white) version.
+ *
+ * The binarized image is recalculated at full size whenever the color or threshold
+ * changes, using the same logic as the Java processor (see `lib/centroid.ts`), and an
+ * orange dot marks the centroid of the largest group. Clicking the first frame picks
+ * the color under the cursor.
+ */
 const FramePreview = ({ thumbnailUrl, color, threshold, onPickColor, onStats, onFrameLoaded }: Props) => {
   const [frame, setFrame] = useState<ImageData | null>(null);
   const [failed, setFailed] = useState(false);

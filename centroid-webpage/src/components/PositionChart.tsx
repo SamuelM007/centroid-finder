@@ -3,17 +3,27 @@ import { gapRanges, matchedSegments, type TrackRow } from '../lib/csv';
 import { formatDuration } from '../lib/format';
 
 interface Props {
+  /** The job's CSV rows. */
   rows: TrackRow[];
-  duration: number; // seconds
-  maxValue: number; // top of the y axis, in pixels
-  time: number; // current video time, for the marker line
+  /** Length of the x axis, in seconds. */
+  duration: number;
+  /** Top of the y axis, in video pixels. */
+  maxValue: number;
+  /** Current video time in seconds, drawn as a vertical line. */
+  time: number;
+  /** Called with a time in seconds when the chart is clicked. */
   onSeek: (seconds: number) => void;
 }
 
+/** Size of the SVG's drawing area. The SVG stretches to fit, so these are just units. */
 const W = 1000;
 const H = 220;
 
-// x and y position over time; click anywhere to jump the video there
+/**
+ * Line chart of the centroid's x and y position over time, drawn as an SVG.
+ * Frames with no match are left as gaps and shaded gray. Clicking anywhere on the chart
+ * calls `onSeek` with that point's time, so the video can jump there.
+ */
 const PositionChart = ({ rows, duration, maxValue, time, onSeek }: Props) => {
   const sx = (s: number) => (duration > 0 ? (s / duration) * W : 0);
   const sy = (v: number) => H - (maxValue > 0 ? (v / maxValue) * H : 0);

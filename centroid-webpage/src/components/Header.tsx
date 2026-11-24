@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { api, usingMock } from '../api';
 
+/** The crosshair logo. Takes its line color from the surrounding text color. */
 export function Logo() {
   return (
     <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
@@ -12,6 +13,10 @@ export function Logo() {
   );
 }
 
+/**
+ * The bar at the top of every page: logo, Videos and Jobs links, and a badge showing
+ * whether the server is online (checked every 15 seconds), or "Mock data" in mock mode.
+ */
 const Header = () => {
   const [online, setOnline] = useState<boolean | null>(null);
   const { pathname } = useLocation();

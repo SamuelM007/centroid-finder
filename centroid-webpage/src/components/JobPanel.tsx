@@ -4,12 +4,22 @@ import { api } from '../api';
 import { useJobStatus } from '../hooks/useJobStatus';
 
 interface Props {
+  /** The video to process. */
   fileName: string;
-  color: string; // "#RRGGBB"
+  /** Target color, `"#RRGGBB"`. */
+  color: string;
+  /** Maximum color distance (0–441). */
   threshold: number;
 }
 
-// The "Process Video with These Settings" button, plus the status of the job it started
+/**
+ * The "Process Video with These Settings" button, plus the status of the job it starts.
+ *
+ * Clicking the button sends `POST /api/process/{fileName}`, then follows the new job with
+ * {@link useJobStatus}: a progress bar while it runs, Download CSV and View results links
+ * when it's done, or an error message if it fails. The button is disabled while a job is
+ * running, and can be used again once it finishes.
+ */
 const JobPanel = ({ fileName, color, threshold }: Props) => {
   const [jobId, setJobId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
