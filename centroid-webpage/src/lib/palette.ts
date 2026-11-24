@@ -1,10 +1,19 @@
 import { rgbToHex } from './centroid';
 
-// Finds the most common colors in an image (canvas ImageData.data).
-// Pixels are grouped into buckets (16 levels per channel), buckets are ranked by how
-// many pixels fall in them, and each bucket's color is the average of its pixels.
-// Colors closer than minDistance to one already picked are skipped, so the result
-// isn't five shades of the same background.
+/**
+ * Finds the most common distinct colors in an image. Used for the preset swatches on
+ * the preview page.
+ *
+ * Pixels are grouped into buckets (16 levels per channel, so 4096 buckets), the buckets
+ * are ranked by how many pixels fall in them, and each bucket's color is the average of
+ * its pixels. A color closer than `minDistance` to one already picked is skipped, so the
+ * result isn't five shades of the same background.
+ *
+ * @param rgba pixel data from a canvas (`ImageData.data`)
+ * @param count how many colors to return at most
+ * @param minDistance smallest allowed color distance between two returned colors
+ * @returns colors as `"#RRGGBB"`, most common first
+ */
 export function dominantColors(rgba: Uint8ClampedArray, count = 5, minDistance = 60): string[] {
   const BUCKETS = 16 * 16 * 16;
   const counts = new Uint32Array(BUCKETS);

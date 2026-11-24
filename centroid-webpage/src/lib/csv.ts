@@ -1,13 +1,25 @@
-// The processor writes one "seconds,x,y" row per frame, with -1,-1 when nothing matched.
+/**
+ * @file Reading and summarizing the processor's output CSV.
+ * The processor writes one `seconds,x,y` row per frame, with `-1,-1` when nothing matched.
+ */
 
+/** One frame of the tracking result. */
 export interface TrackRow {
+  /** Time of the frame in the video, in seconds. */
   seconds: number;
+  /** Centroid x in video pixels, or -1 when nothing matched. */
   x: number;
+  /** Centroid y in video pixels, or -1 when nothing matched. */
   y: number;
 }
 
+/** True if the object was found in this frame (the row isn't `-1,-1`). */
 export const isMatch = (r: TrackRow) => !(r.x === -1 && r.y === -1);
 
+/**
+ * Parses the processor's CSV text into rows. Skips blank lines, a header line, and
+ * anything else that isn't three numbers. Handles Windows (`\r\n`) line endings.
+ */
 export function parseTrackCsv(text: string): TrackRow[] {
   const rows: TrackRow[] = [];
   for (const line of text.split(/\r?\n/)) {
@@ -21,7 +33,13 @@ export function parseTrackCsv(text: string): TrackRow[] {
   return rows;
 }
 
-// Index of the last row at or before time t (rows are in time order), or -1
+/**
+ * Finds the row for a moment in the video, using binary search.
+ *
+ * @param rows rows in time order
+ * @param t time in seconds
+ * @returns index of the last row at or before `t`, or -1 if `t` is before the first row
+ */
 export function rowIndexAt(rows: TrackRow[], t: number): number {
   let lo = 0;
   let hi = rows.length - 1;
@@ -38,7 +56,10 @@ export function rowIndexAt(rows: TrackRow[], t: number): number {
   return found;
 }
 
-// Splits rows into runs of matched rows, so lines aren't drawn across "no match" gaps
+/**
+ * Splits the rows into runs of consecutive matched frames. Used to draw the tracked path
+ * as separate lines, so no line is drawn across a stretch where the object wasn't found.
+ */
 export function matchedSegments(rows: TrackRow[]): TrackRow[][] {
   const segments: TrackRow[][] = [];
   let current: TrackRow[] = [];
@@ -54,15 +75,21 @@ export function matchedSegments(rows: TrackRow[]): TrackRow[][] {
   return segments;
 }
 
+/** The numbers shown in the results page's Summary card. */
 export interface TrackSummary {
+  /** Total number of frames (rows). */
   frames: number;
+  /** Frames where the object was found. */
   matched: number;
+  /** Frames where it wasn't (`-1,-1`). */
   noMatch: number;
-  trackedPercent: number; // whole number, 0-100
-  duration: number; // seconds of the last row
+  /** Share of frames where it was found, as a whole number from 0 to 100. */
+  trackedPercent: number;
+  /** Time of the last row, in seconds. */
+  duration: number;
 }
 
-// The numbers shown in the results page's Summary card
+/** Counts frames, matches and duration for the Summary card. All zeros for an empty CSV. */
 export function summarizeTrack(rows: TrackRow[]): TrackSummary {
   const matched = rows.filter(isMatch).length;
   return {
@@ -74,7 +101,12 @@ export function summarizeTrack(rows: TrackRow[]): TrackSummary {
   };
 }
 
-// Time ranges [start, end] where no match was found
+/**
+ * Finds the stretches of time where the object wasn't found. Shown as gray bands on the
+ * position chart.
+ *
+ * @returns `[start, end]` pairs in seconds. A gap that runs to the end of the video ends at the last row.
+ */
 export function gapRanges(rows: TrackRow[]): Array<[number, number]> {
   const gaps: Array<[number, number]> = [];
   let start: number | null = null;
