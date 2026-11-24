@@ -156,10 +156,13 @@ public ResponseEntity<?> getResult(@PathVariable String jobId) {
     if (status == null) {
         return ResponseEntity.status(404).body(Map.of("error", "Job ID not found"));
     }
+    // each job writes its output to metadata/<jobId>.csv
     File csv = new File("metadata/" + jobId + ".csv");
+    // only send the csv once the job finished successfully and the file is actually there
     if (status != JobStatus.DONE || !csv.isFile()) {
         return ResponseEntity.status(404).body(Map.of("error", "Result not available for this job"));
     }
+    // send the csv file as text/csv so the browser can show or download it
     return ResponseEntity.ok()
         .contentType(MediaType.parseMediaType("text/csv"))
         .body(new FileSystemResource(csv));
