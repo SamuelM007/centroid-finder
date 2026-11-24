@@ -26,7 +26,7 @@ The original single-image version (`ImageSummaryApp`) is in [`src/`](src/), with
 | **Job status**: checks `GET /api/process/{jobId}/status` every 2 seconds, then links to the CSV | [`hooks/useJobStatus.ts`](centroid-webpage/src/hooks/useJobStatus.ts) |
 | **Higher-order component**: `withData` handles fetching, loading, errors, retry and polling | [`hoc/withData.tsx`](centroid-webpage/src/hoc/withData.tsx) |
 | **Mock data** for working without the backend | [`mock/`](centroid-webpage/src/mock/) |
-| **Automated tests**: 73 frontend tests (Vitest + React Testing Library), plus JUnit tests for the processor | `*.test.ts(x)` files, [`processor/src/test/`](processor/src/test/java/) |
+| **Automated tests**: 73 frontend tests (Vitest + React Testing Library), plus JUnit tests for the processor and server | `*.test.ts(x)` files, [`processor/src/test/`](processor/src/test/java/), [`server/src/test/`](server/src/test/java/api/) |
 
 ### Unique features
 
@@ -147,6 +147,22 @@ The tests use [Vitest](https://vitest.dev/) and [React Testing Library](https://
 cd processor
 mvn test
 ```
+
+**Server** (JUnit + Spring MockMvc):
+
+```bash
+cd server
+mvn test
+```
+
+The server tests call every API route, including the error cases (missing params, unknown files and job IDs, results that aren't ready). They use their own database (`target/test-jobs.db`) and create and delete their own test videos in `videos/`, so your real jobs and videos aren't touched.
+
+| Test file | Covers |
+| --- | --- |
+| `VideoControllerTest.java` | `/api/health`, `/api/videos`, `/api/video/{fileName}`, `/api/thumbnail/{fileName}`, unknown routes |
+| `JobControllerTest.java` | `/api/process/{fileName}`, `/api/process/{jobId}/status`, `/api/jobs`, `/api/jobs/{jobId}`, `/api/result/{jobId}` |
+
+Both the processor and server tests run on every pull request to `main` (see [`.github/workflows/run-tests.yml`](.github/workflows/run-tests.yml)).
 
 ### Frontend scripts
 

@@ -21,6 +21,7 @@ jobs:
           cache: maven
 
       - name: Run and Verify Tests
+        working-directory: processor
         run: |
           set -o pipefail
           mvn -B test | tee test-results.txt
@@ -40,3 +41,7 @@ jobs:
           fi
 
           echo "✅ All unit tests passed and $TEST_COUNT tests were executed."
+
+      - name: Run Server Tests
+        working-directory: server
+        run: mvn -B test
