@@ -196,7 +196,9 @@ Both the processor and server tests run on every pull request to `main` (see [`.
 ```
 processor/            Java video processor (JavaCV) -> videoprocessor.jar
 server/
-  api/                ApiApplication, VideoController, JobRepository (SQLite)
+  src/main/java/api/  ApiApplication, JobController, VideoController, JobRepository (SQLite),
+                      InputValidator, ApiExceptionHandler
+  src/test/java/api/  MockMvc and validator tests
   videos/             input videos (not in git)
   metadata/           job output CSVs
 centroid-webpage/
