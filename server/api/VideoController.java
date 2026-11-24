@@ -74,17 +74,24 @@ public ResponseEntity<?> getAllVideos(){
  */
 @GetMapping("/api/thumbnail/{fileName}")
 public ResponseEntity<?> getThumbnail(@PathVariable String fileName){
+    // make sure the video exists before trying to open it
     File file = new File("videos/" + fileName);
     if (!file.exists()) {
         return ResponseEntity.notFound().build();
     }
+    // try-with-resources closes the grabber when we're done, even if something fails
     try (FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(file)) {
+        // opens the video. throws if the file isn't a video ffmpeg can read
         grabber.start();
+        // grab the first video frame and convert it from a JavaCV Frame to a BufferedImage
         BufferedImage image = new Java2DFrameConverter().convert(grabber.grabImage());
+        // encode the frame as a jpg in memory instead of saving it to a file
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         ImageIO.write(image, "jpg", out);
+        // send the jpg bytes back so the frontend can use the url as an <img> src
         return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG).body(out.toByteArray());
     } catch (IOException e) {
+        // the file couldn't be opened or read as a video
         return ResponseEntity.internalServerError()
                 .body(Map.of("error", "Error generating thumbnail"));
     }
