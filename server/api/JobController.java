@@ -15,15 +15,38 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST routes for video processing jobs: starting a job, checking its status,
+ * listing past jobs, and downloading a finished job's CSV.
+ * Jobs are stored in the database through {@link JobRepository}.
+ */
 @RestController
 public class JobController {
 
 private final JobRepository jobs;
 
+/**
+ * Creates the controller. Spring passes in the {@link JobRepository} automatically.
+ *
+ * @param jobs the repository used to save and look up jobs
+ */
 public JobController(JobRepository jobs) {
     this.jobs = jobs;
 }
 
+/**
+ * Starts processing a video in the background. Handles
+ * {@code POST /api/process/{fileName}?targetColor=RRGGBB&threshold=N}.
+ *
+ * Creates a job in the database, then runs the processor jar as a separate process.
+ * When that process exits, the job is marked {@code done} (exit code 0) or {@code error}.
+ *
+ * @param fileName    the name of a file in the {@code videos/} folder
+ * @param targetColor the color to track, as a hex string like {@code FF0000}
+ * @param threshold   the color distance threshold for binarizing
+ * @return 202 with {@code {"jobId": "..."}}, 400 if a param is missing, 404 if the video
+ *         doesn't exist, or 500 if the processor couldn't be started
+ */
  @PostMapping("/api/process/{fileName}")
 public ResponseEntity<Map<String, String>> startProcess(@PathVariable String fileName,
                                            @RequestParam(required = false) String targetColor,
@@ -59,7 +82,14 @@ public ResponseEntity<Map<String, String>> startProcess(@PathVariable String fil
 
 }
 
-//checks if job is done
+/**
+ * Returns the current status of a job. Handles {@code GET /api/process/{jobId}/status}.
+ *
+ * @param jobId the ID returned when the job was started
+ * @return 200 with {@code {"status": ...}}. A {@code done} job also includes a {@code result} link
+ *         to its CSV, and an {@code error} job includes an {@code error} message.
+ *         Returns 404 if no job has this ID.
+ */
 @GetMapping("/api/process/{jobId}/status")
 public ResponseEntity<Map<String, String>> jobStatus(@PathVariable String jobId){
     JobStatus status = jobs.findStatus(jobId);
@@ -75,13 +105,23 @@ public ResponseEntity<Map<String, String>> jobStatus(@PathVariable String jobId)
     return ResponseEntity.ok(Map.of("status", status.value()));
 }
 
-// all jobs, newest first (for the jobs history page)
+/**
+ * Lists every job, newest first. Handles {@code GET /api/jobs}.
+ *
+ * @return 200 with a JSON array of jobs, each with {@code id, fileName, targetColor,
+ *         threshold, status, createdAt}
+ */
 @GetMapping("/api/jobs")
 public ResponseEntity<List<Map<String, Object>>> getAllJobs() {
     return ResponseEntity.ok(jobs.findAll());
 }
 
-// one job with its settings and status
+/**
+ * Returns one job with its settings and status. Handles {@code GET /api/jobs/{jobId}}.
+ *
+ * @param jobId the job's ID
+ * @return 200 with the job, or 404 if no job has this ID
+ */
 @GetMapping("/api/jobs/{jobId}")
 public ResponseEntity<?> getJob(@PathVariable String jobId) {
     Map<String, Object> job = jobs.findById(jobId);
@@ -91,7 +131,14 @@ public ResponseEntity<?> getJob(@PathVariable String jobId) {
     return ResponseEntity.ok(job);
 }
 
-// the CSV output of a finished job
+/**
+ * Returns the CSV output of a finished job. Handles {@code GET /api/result/{jobId}}.
+ * Each row is {@code seconds,x,y} for one frame.
+ *
+ * @param jobId the job's ID
+ * @return 200 with the CSV as {@code text/csv}, or 404 if no job has this ID,
+ *         the job isn't done, or its CSV file is missing
+ */
 @GetMapping("/api/result/{jobId}")
 public ResponseEntity<?> getResult(@PathVariable String jobId) {
     // look the id up first so only real job ids are ever turned into a file path

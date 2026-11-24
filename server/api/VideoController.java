@@ -21,9 +21,19 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST routes for the videos stored in the server's {@code videos/} folder:
+ * listing them, streaming a video, and getting its first frame as a thumbnail.
+ */
 @RestController
 public class VideoController {
 
+/**
+ * Streams a video file. Handles {@code GET /api/video/{fileName}}.
+ *
+ * @param fileName the name of a file in the {@code videos/} folder
+ * @return 200 with the video as {@code video/mp4}, or 404 if the file doesn't exist
+ */
 @GetMapping("/api/video/{fileName}")
  public ResponseEntity<Resource> getVideo(@PathVariable String fileName){
     File file = new File("videos/"+fileName);
@@ -36,6 +46,11 @@ public class VideoController {
     .body(video);
  }
 
+/**
+ * Lists the names of every file in the {@code videos/} folder. Handles {@code GET /api/videos}.
+ *
+ * @return 200 with a JSON array of file names, or 500 with an error message if the folder can't be read
+ */
   @GetMapping("/api/videos")
 public ResponseEntity<?> getAllVideos(){
     File[] files = new File("videos").listFiles();
@@ -50,6 +65,13 @@ public ResponseEntity<?> getAllVideos(){
     return ResponseEntity.ok(names);
 }
 
+/**
+ * Returns the first frame of a video as a JPEG. Handles {@code GET /api/thumbnail/{fileName}}.
+ *
+ * @param fileName the name of a file in the {@code videos/} folder
+ * @return 200 with the frame as {@code image/jpeg}, 404 if the file doesn't exist,
+ *         or 500 with an error message if the file can't be read as a video
+ */
 @GetMapping("/api/thumbnail/{fileName}")
 public ResponseEntity<?> getThumbnail(@PathVariable String fileName){
     File file = new File("videos/" + fileName);
