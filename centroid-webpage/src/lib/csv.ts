@@ -54,6 +54,26 @@ export function matchedSegments(rows: TrackRow[]): TrackRow[][] {
   return segments;
 }
 
+export interface TrackSummary {
+  frames: number;
+  matched: number;
+  noMatch: number;
+  trackedPercent: number; // whole number, 0-100
+  duration: number; // seconds of the last row
+}
+
+// The numbers shown in the results page's Summary card
+export function summarizeTrack(rows: TrackRow[]): TrackSummary {
+  const matched = rows.filter(isMatch).length;
+  return {
+    frames: rows.length,
+    matched,
+    noMatch: rows.length - matched,
+    trackedPercent: rows.length ? Math.round((matched / rows.length) * 100) : 0,
+    duration: rows.length ? rows[rows.length - 1].seconds : 0,
+  };
+}
+
 // Time ranges [start, end] where no match was found
 export function gapRanges(rows: TrackRow[]): Array<[number, number]> {
   const gaps: Array<[number, number]> = [];
