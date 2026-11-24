@@ -2,12 +2,18 @@ import { summarizeTrack, type TrackRow } from '../lib/csv';
 import { formatDuration } from '../lib/format';
 
 interface Props {
+  /** The job's CSV rows. */
   rows: TrackRow[];
+  /** URL of the CSV file. */
   downloadUrl: string;
+  /** File name the browser saves the CSV as. */
   downloadName: string;
 }
 
-// Frames, % tracked, frames with no match, duration, and the Download CSV button
+/**
+ * The Summary card on the results page: frames, % tracked, frames with no match,
+ * duration (see `summarizeTrack`), and the Download CSV button.
+ */
 const ResultSummary = ({ rows, downloadUrl, downloadName }: Props) => {
   const summary = summarizeTrack(rows);
   const stats: Array<[string, string]> = [

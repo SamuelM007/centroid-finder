@@ -9,10 +9,18 @@ import { dominantColors } from '../lib/palette';
 import { getPreviewHint, type PreviewStats } from '../lib/previewHint';
 import { settingsFromUrl } from '../lib/settings';
 
-// shown until the first frame has loaded and its common colors are known
+/** Preset swatches shown until the first frame has loaded and its common colors are known. */
 const FALLBACK_PRESETS = ['#660005', '#000000', '#E11D48', '#16A34A', '#2563EB'];
 
-// /preview/:filename — tune the color and threshold on the first frame, then process the video
+/**
+ * The preview page at `/preview/:filename`. Shows the video's first frame next to a live
+ * binarized version, lets the user tune the target color and threshold, and starts a
+ * processing job with those settings.
+ *
+ * This page owns the color and threshold state and passes them down to
+ * `FramePreview`, `SettingsPanel` and `JobPanel`. Starting values can come from the URL
+ * (`?color=FFA200&threshold=164`), which is how "Run again with new settings" works.
+ */
 const Preview = () => {
   const { filename = '' } = useParams<{ filename: string }>();
   const [searchParams] = useSearchParams();

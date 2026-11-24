@@ -1,14 +1,16 @@
 import type { JobStatus } from '../api';
 
+/** How a step is drawn: check mark (done), orange (active), red "!" (error) or gray (idle). */
 type StepState = 'done' | 'active' | 'error' | 'idle';
 
 interface Step {
   label: string;
+  /** Smaller text under the label. */
   sub: string;
   state: StepState;
 }
 
-// The three steps a job goes through, and where this job is
+/** The three steps a job goes through, and the state of each for a job with this status. */
 function stepsFor(status: JobStatus): Step[] {
   return [
     { label: 'Started', sub: 'Job created', state: 'done' },
@@ -25,7 +27,7 @@ function stepsFor(status: JobStatus): Step[] {
   ];
 }
 
-// Started → Processing → Results ready, with a check mark on each finished step
+/** Progress steps on the results page: Started → Processing → Results ready. */
 const JobStepper = ({ status }: { status: JobStatus }) => (
   <ol className="stepper card" aria-label="Job progress">
     {stepsFor(status).map((step, i) => (

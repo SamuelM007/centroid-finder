@@ -6,6 +6,18 @@ import Jobs from './pages/Jobs';
 import JobResults from './pages/JobResults';
 import './App.css';
 
+/**
+ * The app's layout and routes. The header shows on every page.
+ *
+ * | Path                  | Page                                  |
+ * | --------------------- | ------------------------------------- |
+ * | `/`                   | redirects to `/videos`                |
+ * | `/videos`             | Video Chooser                         |
+ * | `/preview/:filename`  | Preview, tuning and processing        |
+ * | `/jobs`               | Job history                           |
+ * | `/jobs/:jobId`        | One job's progress and results        |
+ * | anything else         | "Page not found"                      |
+ */
 function App() {
   return (
     <>

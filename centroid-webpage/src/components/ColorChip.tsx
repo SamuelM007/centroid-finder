@@ -1,9 +1,14 @@
 interface Props {
-  hex: string; // "RRGGBB" or "#RRGGBB"
+  /** The color, as `"RRGGBB"` or `"#RRGGBB"`. */
+  hex: string;
+  /** Show the hex code in bold. Default false. */
   bold?: boolean;
 }
 
-// A small color square followed by its hex code, e.g. ■ 660005
+/**
+ * A small color square followed by its hex code, e.g. ■ 660005.
+ * Used for a job's target color on the Jobs table and the results page.
+ */
 const ColorChip = ({ hex, bold = false }: Props) => {
   const plain = hex.replace('#', '').toUpperCase();
   return (

@@ -2,15 +2,28 @@ import { useState } from 'react';
 import { HEX_RE, MAX_THRESHOLD, normalizeHex } from '../lib/color';
 
 interface Props {
-  color: string; // "#RRGGBB"
+  /** Current target color, `"#RRGGBB"`. */
+  color: string;
+  /** Current threshold, 0–441. */
   threshold: number;
+  /** Colors to show as one-click swatches, each `"#RRGGBB"`. */
   presets: string[];
+  /** True if the presets came from the frame; changes their label to "Most common colors in this frame". */
   presetsFromFrame: boolean;
+  /** Called with `"#RRGGBB"` (upper case) when the color changes. */
   onColorChange: (hex: string) => void;
+  /** Called with the new value when the slider moves. */
   onThresholdChange: (value: number) => void;
 }
 
-// Target color (picker, hex field, preset swatches) and the threshold slider
+/**
+ * The preview page's settings: the target color (color picker, hex field and preset
+ * swatches) and the threshold slider.
+ *
+ * This component doesn't keep the color or threshold itself; the page owns them and
+ * passes them in (a "controlled" component). The only state here is the half-typed text
+ * in the hex field.
+ */
 const SettingsPanel = ({ color, threshold, presets, presetsFromFrame, onColorChange, onThresholdChange }: Props) => {
   // The hex field can hold a half-typed value; it only changes the color once it's valid.
   // When the color changes from somewhere else (picker, swatch, clicking the frame),

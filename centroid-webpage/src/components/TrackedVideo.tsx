@@ -2,23 +2,37 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { drawTrack } from '../lib/drawing';
 import { isMatch, matchedSegments, rowIndexAt, type TrackRow } from '../lib/csv';
 
+/** The video's real size and length, known once it has loaded. */
 export interface VideoInfo {
+  /** Width in pixels. */
   width: number;
+  /** Height in pixels. */
   height: number;
+  /** Length in seconds. */
   duration: number;
 }
 
 interface Props {
+  /** URL of the video. */
   src: string;
+  /** The job's CSV rows, used to draw the path and the dot. */
   rows: TrackRow[];
-  time: number; // current playback time, kept by the parent so the chart can use it too
-  videoRef: RefObject<HTMLVideoElement | null>; // the parent uses it to seek
+  /** Current playback time in seconds. Kept by the parent so the chart can use it too. */
+  time: number;
+  /** Ref to the `<video>` element. The parent uses it to jump to a time when the chart is clicked. */
+  videoRef: RefObject<HTMLVideoElement | null>;
+  /** Called with the new time while the video plays or after a jump. */
   onTimeChange: (seconds: number) => void;
+  /** Called once the video's size and length are known. */
   onLoaded: (info: VideoInfo) => void;
 }
 
-// The video with the tracked path and the current centroid drawn on a canvas on top,
-// and a readout of the current time and position underneath
+/**
+ * The results page's video, with the whole tracked path and a dot at the current
+ * centroid drawn on a canvas laid over it, plus a readout of the current time and
+ * position underneath. If the video can't be loaded, shows a message instead; the chart
+ * and CSV still work without it.
+ */
 const TrackedVideo = ({ src, rows, time, videoRef, onTimeChange, onLoaded }: Props) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [failed, setFailed] = useState(false);

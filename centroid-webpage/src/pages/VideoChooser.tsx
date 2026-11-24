@@ -3,19 +3,28 @@ import VideoCard from '../components/VideoCard';
 import { withData, type WithDataProps } from '../hoc/withData';
 import { api, type Job, type JobStatus } from '../api';
 
+/** What the Video Chooser loads: the videos, plus every job so each card can show its last status. */
 interface ChooserData {
   videos: string[];
   jobs: Job[];
 }
 
-// Job statuses are a bonus: if /api/jobs fails, still show the videos
+/**
+ * Loads the videos and jobs at the same time. Job statuses are a bonus: if `/api/jobs`
+ * fails, the videos are still shown, all as "Not processed".
+ */
 const loadVideos = async (): Promise<ChooserData> => {
   const [videos, jobs] = await Promise.all([api.getVideos(), api.getJobs().catch(() => [] as Job[])]);
   return { videos, jobs };
 };
 
+/** `data` and `reload` come from {@link withData}; `filter` comes from the page. */
 type GridProps = WithDataProps<ChooserData> & { filter: string };
 
+/**
+ * The grid of video cards, filtered by name. Shows a message instead when there are no
+ * videos, or none match the filter.
+ */
 function VideoGrid({ data, filter }: GridProps) {
   // jobs come newest first, so the first job seen for a video is its latest run
   const lastStatus = useMemo(() => {
@@ -48,11 +57,15 @@ function VideoGrid({ data, filter }: GridProps) {
   );
 }
 
-// the HOC does the fetching and the loading / error states
+/** {@link VideoGrid} wrapped by the withData HOC, which does the fetching and the loading / error states. */
 const VideoGridWithData = withData<ChooserData, { filter: string }>(VideoGrid, loadVideos, {
   loadingMessage: 'Loading videos…',
 });
 
+/**
+ * The Video Chooser page at `/videos`: a filter box and a grid of every video on the
+ * server. Clicking a video opens its preview page.
+ */
 const VideoChooser = () => {
   const [filter, setFilter] = useState('');
   return (

@@ -1,16 +1,24 @@
 import type { Api, Job, JobStatusResponse } from './types';
 
-// Talks to the Spring Boot backend. In development Vite forwards /api to
-// http://localhost:8080 (see vite.config.ts), so these are same-origin requests.
+/**
+ * @file The real API client: talks to the Spring Boot backend.
+ * In development, Vite forwards `/api` to http://localhost:8080 (see `vite.config.ts`),
+ * so these are same-origin requests and need no CORS setup.
+ */
 
 const enc = encodeURIComponent;
 
+/**
+ * Fetches a URL and parses the response as JSON.
+ * @throws Error if the response status isn't 2xx
+ */
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${url} returned ${res.status}`);
   return (await res.json()) as T;
 }
 
+/** {@link Api} implementation that calls the backend over HTTP. */
 export const realApi: Api = {
   getVideos: () => getJson<string[]>('/api/videos'),
 
@@ -27,6 +35,7 @@ export const realApi: Api = {
   async startProcessing(fileName, targetColor, threshold) {
     const params = new URLSearchParams({ targetColor, threshold: String(threshold) });
     const res = await fetch(`/api/process/${enc(fileName)}?${params}`, { method: 'POST' });
+    // the server sends {"jobId"} on success and {"error"} on failure
     const body = (await res.json().catch(() => ({}))) as { jobId?: string; error?: string };
     if (!res.ok || !body.jobId) throw new Error(body.error ?? `Server returned ${res.status}`);
     return body.jobId;
@@ -44,6 +53,7 @@ export const realApi: Api = {
     try {
       return (await fetch('/api/health')).ok;
     } catch {
+      // network error: the server isn't running
       return false;
     }
   },

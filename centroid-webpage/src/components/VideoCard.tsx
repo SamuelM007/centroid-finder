@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import StatusPill, { type PillKind } from './StatusPill';
 import { api } from '../api';
 
+/** Status text on the cards, worded for a video rather than a job. */
 const CARD_LABELS: Record<PillKind, string> = {
   done: 'Tracked',
   processing: 'Processing',
@@ -11,11 +12,17 @@ const CARD_LABELS: Record<PillKind, string> = {
 };
 
 interface Props {
+  /** The video's file name. */
   fileName: string;
+  /** Status of the video's most recent job, or `'none'` if it has never been processed. */
   lastStatus: PillKind;
 }
 
-// One clickable video in the Video Chooser grid
+/**
+ * One video in the Video Chooser grid: its first-frame thumbnail, name and last job
+ * status. The whole card links to the video's preview page. If the thumbnail fails to
+ * load, a plain dark box is shown instead.
+ */
 const VideoCard = ({ fileName, lastStatus }: Props) => {
   const [thumbFailed, setThumbFailed] = useState(false);
   return (

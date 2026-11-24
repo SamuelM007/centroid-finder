@@ -1,10 +1,19 @@
 import { useEffect, useState } from 'react';
 import { api, type JobStatusResponse } from '../api';
 
+/** How often a job's status is checked, in milliseconds. */
 export const STATUS_POLL_MS = 2000;
 
-// Checks GET /api/process/{jobId}/status right away and then every 2 seconds until the
-// job is done or failed. Pass null when there's no job to follow yet.
+/**
+ * Follows a job's status: checks `GET /api/process/{jobId}/status` right away, then every
+ * 2 seconds until the job is done or failed. If the server can't be reached, it keeps
+ * retrying every 4 seconds. Switching to a different `jobId` starts over.
+ *
+ * @param jobId the job to follow, or `null` when there's no job yet (does nothing)
+ * @returns
+ * - `status`: the latest status response, or `null` before the first check
+ * - `connectionLost`: true while the server can't be reached
+ */
 export function useJobStatus(jobId: string | null) {
   const [status, setStatus] = useState<JobStatusResponse | null>(null);
   const [connectionLost, setConnectionLost] = useState(false);

@@ -1,7 +1,10 @@
 import type { PreviewStats } from '../lib/previewHint';
 
-// "This frame": matching pixels, number of groups, and the largest group's centroid.
-// Shows dashes until the first frame has been analyzed.
+/**
+ * The "This frame" list on the preview page: matching pixels, number of groups, and the
+ * largest group's centroid.
+ * @param stats the preview's results, or `null` before the first frame is analyzed (shows dashes)
+ */
 const FrameStats = ({ stats }: { stats: PreviewStats | null }) => (
   <dl className="stats-list">
     <div>

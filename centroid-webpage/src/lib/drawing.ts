@@ -1,10 +1,18 @@
 import type { BinaryImage, Coordinate } from './centroid';
 import { isMatch, rowIndexAt, type TrackRow } from './csv';
 
+/** Color of the centroid dot, on the preview and on the video overlay. */
 const DOT_FILL = '#F97316';
 
-// Draws a binary image (white = 1, black = 0) at full size, plus a dot at the centroid
-// of the largest group when there is one.
+/**
+ * Draws a black-and-white image onto a canvas at full size (white = `1`, black = `0`),
+ * plus an orange dot at the largest group's centroid when there is one.
+ * Resizes the canvas to match the image.
+ *
+ * @param canvas the canvas to draw on
+ * @param binary the image from {@link binarize}
+ * @param largest centroid to mark; `(-1, -1)` draws no dot
+ */
 export function paintBinary(canvas: HTMLCanvasElement, binary: BinaryImage, largest: Coordinate) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;

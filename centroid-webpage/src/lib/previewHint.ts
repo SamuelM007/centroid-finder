@@ -1,25 +1,36 @@
 import type { Coordinate } from './centroid';
 
-// What the preview found in the first frame with the current settings
+/** What the preview found in the first frame with the current settings. */
 export interface PreviewStats {
+  /** Share of the frame's pixels that matched, from 0 to 100. */
   matchingPercent: number;
+  /** Number of connected groups of matching pixels. */
   groups: number;
-  largest: Coordinate; // (-1, -1) when nothing matched
+  /** Centroid of the biggest group, or `(-1, -1)` when nothing matched. */
+  largest: Coordinate;
 }
 
+/** How a hint is colored: gray, green, orange or red. */
 export type HintKind = 'neutral' | 'good' | 'warn' | 'bad';
 
+/** Advice shown under the preview stats. */
 export interface Hint {
   text: string;
   kind: HintKind;
 }
 
-// Above this share of matching pixels, the background is probably matching too
+/** Above this share of matching pixels, the background is probably matching too. */
 export const LOOSE_PERCENT = 20;
-// Above this many groups, the match is probably picking up noise
+
+/** Above this many groups, the match is probably picking up noise. */
 export const NOISY_GROUPS = 25;
 
-// Turns the preview stats into advice about the current settings
+/**
+ * Turns the preview stats into advice about the current settings. Checks run in order,
+ * and the first problem found wins: nothing matches, then too loose, then too noisy.
+ *
+ * @param stats the preview's stats, or `null` while the first frame is still loading
+ */
 export function getPreviewHint(stats: PreviewStats | null): Hint {
   if (!stats) {
     return { text: 'Loading the first frame…', kind: 'neutral' };

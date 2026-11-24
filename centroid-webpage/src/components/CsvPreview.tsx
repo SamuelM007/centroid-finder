@@ -1,8 +1,12 @@
 import { isMatch, type TrackRow } from '../lib/csv';
 
+/** How many rows of the CSV to show. */
 const PREVIEW_ROWS = 8;
 
-// The first few rows of the job's CSV as a table
+/**
+ * The first few rows of a job's CSV as a table, with a note on rows where nothing matched.
+ * @param rows every row of the CSV; only the first 8 are shown
+ */
 const CsvPreview = ({ rows }: { rows: TrackRow[] }) => (
   <section className="card stack">
     <div className="card__head">
